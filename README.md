@@ -269,6 +269,8 @@ weatherFx.setBubbles(list);
 | 斜飘雪花外面那圈冰晶结霜 | 年 · [@niannianyw](https://x.com/niannianyw) | `fx.html` 的边缘冰晶（白霜图本身另有 MIT 来源，见下） |
 | 雪花落在气泡上形成积雪 | wood · [@wooduuuuuuu](https://x.com/wooduuuuuuu) | `fx.html` 的 `setAccumulate`：气泡顶积雪、堆满自动吹散 |
 | 焦散水波的来源和做法 | Sylvia · [@Sylvia_mumu](https://x.com/Sylvia_mumu) | `caustic.html`（shader 原型是 Dave Hoskins 的 Tileable Water Caustic） |
+| 雨水玻璃（雨滴挂在玻璃上） | 396 老师 · 小红书号 `18492143860` | `glass.html`（渲染引擎是 raindrop-fx，MIT） |
+| 雨水玻璃（雨滴挂在玻璃上） | 游游老师「缎带骑士」· X [@Suisaeki](https://x.com/Suisaeki) | `glass.html`（渲染引擎是 raindrop-fx，MIT） |
 
 如果哪位不希望被这样引用，或者想换一种写法，告诉作者，会改。
 
@@ -285,7 +287,7 @@ weatherFx.setBubbles(list);
 - **柔雾、晴天光网、体积云、雷雨节奏、霾、彩虹、焦散的水面与涟漪**：自写的 Canvas / GLSL（焦散里那段函数除外，见下）。
 - **实时天气自动切换**（`weather.js`）：查 wttr.in → 归成六种天气 → 套 App 同一张参数表。
 
-**灵感和原创的界线**：冰晶结霜的想法来自 [年 @niannianyw]，雪花堆在气泡上的想法来自 [wood @wooduuuuuuu]，焦散的来源和教程来自 [Sylvia @Sylvia_mumu]；**这些效果里具体的代码、数值和调校是我们自己写的**。装饰雪花的图形素材另有出处，见下。
+**灵感和原创的界线**：冰晶结霜的想法来自 [年 @niannianyw]，雪花堆在气泡上的想法来自 [wood @wooduuuuuuu]，焦散的来源和教程来自 [Sylvia @Sylvia_mumu]，雨水玻璃的想法来自 396 老师（小红书号 `18492143860`）和 游游老师「缎带骑士」[@Suisaeki]；**这些效果里具体的代码、数值和调校是我们自己写的**。装饰雪花的图形素材另有出处，见下。
 
 ## 出处与许可
 

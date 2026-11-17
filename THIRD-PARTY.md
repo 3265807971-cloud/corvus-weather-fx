@@ -14,6 +14,8 @@
 | 斜飘雪花外面的冰晶结霜 | 年 · X [@niannianyw](https://x.com/niannianyw) | `fx.html` 边缘冰晶；白霜图另有来源（见第 3 节） |
 | 雪花落在气泡上形成积雪 | wood · X [@wooduuuuuuu](https://x.com/wooduuuuuuu) | `fx.html` 的 `setAccumulate` / 气泡顶积雪 |
 | 焦散水波的来源和教程 | Sylvia · X [@Sylvia_mumu](https://x.com/Sylvia_mumu) | `caustic.html`；shader 原型见第 1 节 |
+| 雨水玻璃 · 雨滴挂在玻璃上 | 396 老师 · 小红书号 `18492143860` | `glass.html`；渲染引擎见第 5 节 |
+| 雨水玻璃 · 雨滴挂在玻璃上 | 游游老师「缎带骑士」· X [@Suisaeki](https://x.com/Suisaeki) | `glass.html`；渲染引擎见第 5 节 |
 
 如果哪位不希望被这样引用，或想换一种署名方式，联系作者即可调整。
 
