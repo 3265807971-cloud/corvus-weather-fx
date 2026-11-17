@@ -10,6 +10,17 @@
     background: transparent; overflow: hidden;
     -webkit-tap-highlight-color: transparent; user-select: none;
   }
+  /* 直接单独打开（不在 iframe 里）时垫一层演示背景 ——
+     白色雪花、白色冰霜画在白底上等于一片空白。
+     嵌在别人页面里时保持透明；想强制透明就加 ?transparent=1。 */
+  html.standalone, html.standalone body {
+    background:
+      radial-gradient(60% 50% at 18% 22%, rgba(255,206,140,.35), transparent 70%),
+      radial-gradient(45% 45% at 78% 18%, rgba(140,200,255,.30), transparent 70%),
+      radial-gradient(55% 55% at 62% 78%, rgba(255,160,150,.24), transparent 70%),
+      radial-gradient(40% 40% at 24% 84%, rgba(180,255,228,.18), transparent 70%),
+      linear-gradient(180deg,#22303f 0%,#3d4b5c 48%,#6b5a4b 100%);
+  }
   #fx {
     position: fixed; inset: 0; width: 100vw; height: 100vh;
     display: block; pointer-events: none;
@@ -68,6 +79,13 @@
     100% { opacity: 0; transform: translate(-50%, -50%) rotate(calc(var(--rotation) + 8deg)) scale(1.12); }
   }
 </style>
+<script>
+  // 单独打开（不在 iframe 里）＝演示模式：垫背景、默认开边缘冰晶。
+  // 嵌进别的页面时 window.parent !== window，保持原来的透明底行为。
+  const STANDALONE = window.parent === window &&
+    !/[?&]transparent=1(?:&|$)/.test(location.search);
+  if (STANDALONE) document.documentElement.classList.add('standalone');
+</script>
 </head>
 <body>
 <canvas id="fx"></canvas>
@@ -134,8 +152,9 @@
   let accumulate = false;
 
   // ---- 边缘冰晶（v297）----
-  // 独立于数量 / 速度 / 透明度三个滑杆：开关默认关，浓度 22 = 原型默认。
-  let frostEnabled = false;
+  // 独立于数量 / 速度 / 透明度三个滑杆：App 里默认关，单独打开时默认开（好让人看见）。
+  // 浓度 22 = 原型默认。
+  let frostEnabled = STANDALONE;
   let frostOpacity = 22;
   let flakeTimer = 0;
 

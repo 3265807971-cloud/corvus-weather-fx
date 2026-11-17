@@ -27,9 +27,26 @@
   #wall::after{content:"";position:absolute;inset:0;
     background:radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(0,0,0,.45) 100%)}
 
-  .layer{position:fixed;inset:0;width:100%;height:100%;border:0;
+  .layer{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2;
     pointer-events:none;opacity:0;transition:opacity .45s ease}
   .layer.on{opacity:1}
+
+  /* 示例气泡：让「雨丝溅水」和「飘雪积雪」有东西可撞 */
+  /* 气泡做得比手机宽：桌面窗口是手机的五六倍宽，气泡窄了下雪要等很久才堆得起来 */
+  #demoBubbles{
+    position:fixed;right:26px;bottom:56px;z-index:1;display:flex;flex-direction:column;
+    gap:10px;align-items:flex-start;width:min(560px,50vw);pointer-events:none;
+    opacity:0;transition:opacity .4s ease;
+  }
+  #demoBubbles.on{opacity:.92}
+  .demo-bubble{
+    box-sizing:border-box;width:min(480px,88%);padding:11px 16px;margin-right:auto;
+    border-radius:16px;font-size:14px;line-height:1.5;color:rgba(255,255,255,.92);
+    background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);
+    backdrop-filter:blur(8px);box-shadow:0 6px 18px rgba(0,0,0,.18);
+  }
+  .demo-bubble.right{margin-left:auto;margin-right:0;background:rgba(159,216,255,.18);
+    border-color:rgba(159,216,255,.28)}
 
   /* ---- 控制台 ---- */
   #panel{
@@ -77,6 +94,15 @@
 </head>
 <body>
 <div id="wall"></div>
+
+<div id="demoBubbles" aria-hidden="true">
+  <div class="demo-bubble" data-b="0">外面好像下雨了。</div>
+  <div class="demo-bubble right" data-b="1">真的欸，窗户上全是水。</div>
+  <div class="demo-bubble" data-b="2">雨停之前，我都在。</div>
+  <div class="demo-bubble right" data-b="3">那我把窗户开一条缝。</div>
+  <div class="demo-bubble" data-b="4">雪是后来才下的。</div>
+  <div class="demo-bubble right" data-b="5">嗯，世界慢慢就白了。</div>
+</div>
 
 <iframe id="f-glass"   class="layer" src="glass.html"   title="雨水玻璃"></iframe>
 <iframe id="f-caustic" class="layer" src="caustic.html" title="焦散水波"></iframe>
@@ -144,13 +170,42 @@
   const ready = { glass: false, caustic: false, fx: false, sky: false };
   const pending = { glass: [], caustic: [], fx: [], sky: [] };
 
+  /* 示例气泡：雨丝/飘雪时要能撞到东西，才看得到溅水和积雪 */
+  const demoBubblesEl = document.getElementById('demoBubbles');
+  const demoTiles = Array.prototype.slice.call(demoBubblesEl.querySelectorAll('.demo-bubble'));
+  let bubblesOn = false;
+
+  function pushDemoBubbles() {
+    if (!bubblesOn) return;
+    const list = demoTiles.map(function (el) {
+      const r = el.getBoundingClientRect();
+      return { i: 'demo' + el.dataset.b, l: Math.round(r.left), t: Math.round(r.top),
+               r: Math.round(r.right), b: Math.round(r.bottom) };
+    });
+    send('fx', { type: 'weather-fx', op: 'setBubbles', value: list });
+  }
+
+  function setBubblesMode(on) {
+    bubblesOn = !!on;
+    demoBubblesEl.classList.toggle('on', bubblesOn);
+    if (bubblesOn) requestAnimationFrame(pushDemoBubbles);
+    else send('fx', { type: 'weather-fx', op: 'setBubbles', value: [] });
+  }
+
+  window.addEventListener('resize', pushDemoBubbles);
+
   function send(page, msg) {
     if (!page) return;
     if (ready[page]) {
       try { frameEls[page].contentWindow.postMessage(msg, '*'); } catch (_) {}
-    } else {
-      pending[page].push(msg);
+      return;
     }
+    // 还没就绪：同一个 op 只留最后一条。否则页面晚一点 ready 时，
+    // 先排队的旧值（比如「关」时的 setBubbles []）会在就绪后把刚设好的新状态盖回去。
+    const queue = pending[page];
+    const idx = queue.findIndex(function (m) { return m.type === msg.type && m.op === msg.op; });
+    if (idx >= 0) queue[idx] = msg;
+    else queue.push(msg);
   }
 
   window.addEventListener('message', function (e) {
@@ -287,14 +342,24 @@
       send('fx', { type: 'weather-fx', op: 'setCount',   value: fxParams.count });
       send('fx', { type: 'weather-fx', op: 'setSpeed',   value: fxParams.speed });
       send('fx', { type: 'weather-fx', op: 'setOpacity', value: fxParams.opacity });
+      // 边缘冰晶跟着斜飘雪花走；溅水只给雨丝；积雪只给柔光飘雪
+      send('fx', { type: 'weather-fx', op: 'setFrost',      value: fxParams.effect === 'slant-snow' });
+      send('fx', { type: 'weather-fx', op: 'setSplash',     value: key === 'streak' });
+      send('fx', { type: 'weather-fx', op: 'setAccumulate', value: key === 'soft' });
+      setBubblesMode(key === 'streak' || key === 'soft');
+    } else {
+      send('fx', { type: 'weather-fx', op: 'setFrost', value: false });
+      send('fx', { type: 'weather-fx', op: 'setSplash', value: false });
+      send('fx', { type: 'weather-fx', op: 'setAccumulate', value: false });
+      setBubblesMode(false);
+      if (def.page === null) {
+        send('sky', { type: 'weather-sky', op: 'setState', value: 'none' });
+      }
     }
     if (def.page === 'sky') {
       skyStrength = def.sky.strength;
       send('sky', { type: 'weather-sky', op: 'setStrength', value: def.sky.strength });
       send('sky', { type: 'weather-sky', op: 'setState',    value: def.sky.kind });
-    }
-    if (def.page === null) {
-      send('sky', { type: 'weather-sky', op: 'setState', value: 'none' });
     }
     renderParams();
 
