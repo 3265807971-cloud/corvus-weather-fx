@@ -19,6 +19,25 @@
 - 实时天气：查一次 wttr.in，晴/阴/雨/雪/雷雨/雾自动切
 - WebGL 2D/3D 与 Canvas 2D 混合，手机上也跑得动
 
+## 手机上的样子
+
+下面都是用 [`phone.html`](phone.html) 截的（430×900，模拟聊天界面）：
+
+<table>
+<tr>
+<td align="center"><img src="screenshots/01-rain.webp" width="220" alt="垂直雨丝"><br><sub>垂直雨丝 · 打在气泡顶上溅水</sub></td>
+<td align="center"><img src="screenshots/02-slant-snow.webp" width="220" alt="斜飘雪花"><br><sub>斜飘雪花 · 边缘冰晶 + 装饰雪花</sub></td>
+<td align="center"><img src="screenshots/03-soft-snow.webp" width="220" alt="柔光飘雪"><br><sub>柔光飘雪 · 雪堆在气泡和输入框上</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="screenshots/04-fog.webp" width="220" alt="柔雾"><br><sub>柔雾</sub></td>
+<td align="center"><img src="screenshots/05-caustic.webp" width="220" alt="焦散水波"><br><sub>焦散水波</sub></td>
+<td align="center"><img src="screenshots/06-thunderstorm.webp" width="220" alt="雷雨"><br><sub>雷雨 · 闪电</sub></td>
+</tr>
+</table>
+
+想要自己试：打开 [`phone.html`](phone.html)，左边切特效、拖滑杆；右下角可以**选一张自己电脑上的图当壁纸**——图片只在你的浏览器里显示，不会上传到任何地方，刷新就回到默认的。
+
 ## 快速开始
 
 双击 `index.html` 就能看（`file://` 打开也能用，页面之间走 `postMessage`，不依赖同源）。
@@ -26,12 +45,14 @@
 ```
 corvus-weather-fx/
 ├─ index.html          演示入口：控制台 + 4 层 iframe
+├─ phone.html          手机预览：假聊天界面里叠四层特效，可换壁纸（本地，不上传）
 ├─ fx.html             雨雪雾：斜飘雪花 / 垂直雨丝 / 柔光飘雪 / 柔雾（+ 边缘冰晶、溅水、积雪）
 ├─ sky.html            天空：晴天光网 / 多云 / 雷雨 / 霾 / 彩虹
 ├─ caustic.html        焦散水波（WebGL）
 ├─ glass.html          雨水玻璃（raindrop-fx 的最小示例）
 ├─ weather.js          实时天气 → 特效参数
 ├─ demo/chat.html      假聊天页：演示气泡溅水与积雪
+├─ screenshots/        手机预览截图（WebP）
 ├─ assets/bolts/       雷雨用的 5 张闪电图（MIT，来源见 THIRD-PARTY）
 └─ vendor/raindrop-fx/ 雨水玻璃引擎（MIT）
 ```
@@ -44,6 +65,15 @@ corvus-weather-fx/
 | `sky.html` | 默认多云；可以 `sky.html?kind=storm&strength=60` |
 | `caustic.html` | 直接出水波 |
 | `glass.html` | 用一张现画的渐变当背景 |
+| `phone.html` | 手机预览；地址后加 `?fx=rain&wall=2&shot=1` 可以直接定格某一档（截图用） |
+
+### 手机预览页 `phone.html`
+
+一个 430×900 的假手机，里面是真的聊天界面 + 四层特效 iframe，量气泡矩形、发 `setBubbles`、换壁纸都照真实用法做，可以直接当「接入后的样子」参考。
+
+- 左边面板：切 12 档特效、拖数量/速度/浓度；
+- 右下角四张预设壁纸 + **「选一张自己的壁纸」**：走 `FileReader.readAsDataURL` 转成 dataURL，同时铺到 `.phone` 底色和 `glass.html` 的 `setBackground`。**只在本地预览，不发任何请求**；
+- 地址参数：`?fx=` 选档（`rain` / `slant` / `soft` / `fog` / `glass` / `caustic` / `clear` / `cloudy` / `storm` / `haze` / `rainbow` / `off`），`?wall=1~4` 选预设壁纸，`?shot=1` 隐藏面板并固定成 430×900。
 
 ## 三种接入方式
 
@@ -148,9 +178,9 @@ weatherGlass.resize(w, h);
 | `fx.html` | `{ type:'weather-fx', op:'setEffect', value:'rain-streak' }` | `{ type:'weather-fx-ready' }` |
 | `sky.html` | `{ type:'weather-sky', op:'setState', value:'storm' }` | `{ type:'weather-sky-ready' }` |
 | `caustic.html` | `{ type:'weather-caustic', op:'setPower', value:120 }` | `{ type:'weather-caustic-ready' }` |
-| `glass.html` | `{ type:'weather-glass', op:'start' }` | `{ type:'weather-glass-ready' }` |
+| `glass.html` | `{ type:'weather-glass', op:'start' }` / `op:'setBackground', value:'图片地址或 dataURL'` | `{ type:'weather-glass-ready' }` |
 
-`op` 的名字和上面对应页面对象的函数名一致，`value` 就是参数。
+`op` 的名字和上面对应页面对象的函数名一致，`value` 就是参数。`setBackground` 传 dataURL 不会弄脏 canvas，跨文档也安全。
 
 ## 跟着真实天气自动换
 

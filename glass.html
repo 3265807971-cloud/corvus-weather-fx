@@ -20,6 +20,7 @@
   API：
     window.weatherGlass = raindropFx 实例
     postMessage({type:'weather-glass', op:'start'|'stop'})
+    postMessage({type:'weather-glass', op:'setBackground', value:'图片地址或 dataURL'})
 -->
 <script src="vendor/raindrop-fx/raindrop-fx.js"></script>
 <script>
@@ -91,6 +92,10 @@ window.addEventListener('message', function (e){
   if (!msg || msg.type !== 'weather-glass') return;
   if (msg.op === 'start') raindropFx.start();
   else if (msg.op === 'stop') raindropFx.stop();
+  else if (msg.op === 'setBackground' && typeof msg.value === 'string' && msg.value) {
+    // 换背景：dataURL 不会弄脏 canvas，跨文档传也安全
+    try { raindropFx.setBackground(msg.value); } catch (_) {}
+  }
 });
 
 let resizeTimer = 0;
