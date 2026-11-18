@@ -137,7 +137,7 @@
     <div class="wall-row" id="wallRow"></div>
     <button class="filebtn" id="wallBtn" type="button">用自己的图</button>
     <input id="wallFile" type="file" accept="image/*" hidden>
-    <div class="wall-note">六张预置壁纸在 wallpapers/ 里；自己的图只在你这台设备上显示，不上传。</div>
+    <div class="wall-note">四张预置壁纸在 wallpapers/ 里；自己的图只在你这台设备上显示，不上传。</div>
   </div>
 
   <div class="group">
@@ -159,7 +159,7 @@
 
 <div id="tip">← 点左边切特效；雨雪那档可以拖参数</div>
 
-<script src="wallpapers/walls.js"></script>
+<script src="wallpapers/web_walls.js"></script>
 <script src="weather.js"></script>
 <script>
 (function () {
@@ -255,32 +255,24 @@
   const wallRow = document.getElementById('wallRow');
   let wallUrl = '';        // 给雨水玻璃那层当背景的 dataURL
 
-  // 壁纸：有 Photos 就先用照片（wallpapers/ 目录，只放本机、不进仓库），
-  // 没有就退回下面这层运行时画的柔焦底色，页面照样能看。
+  // 壁纸：照片打包在 wallpapers/web_walls.js（花瓣免费素材）；
+  // 没有它、或者某张名字对不上，就退回下面这层运行时画的柔焦底色。
   const WALLS = [
-    { name: '霜林', key: 'frost',
-      linear: ['#22344f', '#3a557a', '#16202f'],
-      blobs: [[0.3, 0.2, 0.55, 'rgba(170,205,255,.35)'], [0.8, 0.3, 0.5, 'rgba(120,160,220,.22)']] },
-    { name: '雾林', key: 'mist',
-      linear: ['#1b2b26', '#33473c', '#111b17'],
-      blobs: [[0.3, 0.2, 0.5, 'rgba(180,220,190,.22)'], [0.76, 0.5, 0.45, 'rgba(120,170,140,.2)']] },
-    { name: '碧水', key: 'water',
-      linear: ['#0b3030', '#12615c', '#0a2020'],
-      blobs: [[0.4, 0.25, 0.55, 'rgba(120,255,235,.3)'], [0.75, 0.7, 0.5, 'rgba(60,200,190,.22)']] },
-    { name: '海光', key: 'sea',
-      linear: ['#123a3f', '#1f6f6a', '#0d2426'],
-      blobs: [[0.3, 0.18, 0.5, 'rgba(220,255,245,.35)'], [0.7, 0.6, 0.5, 'rgba(90,210,200,.2)']] },
-    { name: '落花', key: 'petals',
-      linear: ['#123c40', '#1d6a6a', '#0c2426'],
-      blobs: [[0.5, 0.2, 0.5, 'rgba(180,255,240,.28)'], [0.3, 0.7, 0.45, 'rgba(70,190,180,.2)']] },
-    { name: '窗边', key: 'window',
-      linear: ['#2b211a', '#4a382a', '#1a120d'],
-      blobs: [[0.28, 0.4, 0.5, 'rgba(255,220,160,.35)'], [0.75, 0.25, 0.45, 'rgba(140,190,120,.22)']] }
+    { name: '暮色港湾', key: 'dusk',
+      linear: ['#2b3550', '#6b5670', '#1b2233'],
+      blobs: [[0.62, 0.2, 0.5, 'rgba(255,150,90,.35)'], [0.2, 0.6, 0.5, 'rgba(120,150,220,.25)']] },
+    { name: '云山', key: 'alps',
+      linear: ['#4b7fb4', '#8fc35a', '#1d3320'],
+      blobs: [[0.6, 0.25, 0.55, 'rgba(255,255,255,.4)'], [0.5, 0.85, 0.5, 'rgba(150,210,90,.3)']] },
+    { name: '天鹅湖', key: 'lake',
+      linear: ['#2d6fa8', '#4f9bd0', '#173a52'],
+      blobs: [[0.8, 0.2, 0.5, 'rgba(255,255,255,.35)'], [0.5, 0.8, 0.55, 'rgba(60,150,200,.3)']] },
+    { name: '窗边的猫', key: 'cat',
+      linear: ['#a9bdc9', '#2f6f98', '#101d26'],
+      blobs: [[0.7, 0.2, 0.5, 'rgba(255,255,255,.3)'], [0.75, 0.7, 0.45, 'rgba(20,40,60,.3)']] }
   ];
 
-  // wallpapers/walls.js 是给本机用的照片（dataURL），不进仓库；
-  // 没有它、或者某张名字对不上，就继续用上面的现画底色。
-  const LOCAL_WALLS = window.CORVUS_WALLS || {};
+  const LOCAL_WALLS = window.CORVUS_WEB_WALLS || {};
   WALLS.forEach(function (w) {
     if (w.key && LOCAL_WALLS[w.key]) w.src = LOCAL_WALLS[w.key];
   });
@@ -385,7 +377,7 @@
     reader.readAsDataURL(file);
   });
 
-  // 默认用第一张：霜林
+  // 默认用第一张：暮色港湾
   applyWall(0);
 
   /* ---------------- UI 状态 ---------------- */

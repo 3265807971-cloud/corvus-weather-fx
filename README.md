@@ -44,8 +44,8 @@
 
 ```
 corvus-weather-fx/
-├─ index.html          演示入口：控制台 + 4 层 iframe（六张预置壁纸，可换自己的图）
-├─ phone.html          手机预览：假聊天界面里叠四层特效，同一套六张预置壁纸（本地，不上传）
+├─ index.html          演示入口：控制台 + 4 层 iframe（四张全屏壁纸，可换自己的图）
+├─ phone.html          手机预览：假聊天界面里叠四层特效，六张竖版壁纸（本地，不上传）
 ├─ fx.html             雨雪雾：斜飘雪花 / 垂直雨丝 / 柔光飘雪 / 柔雾（+ 边缘冰晶、溅水、积雪）
 ├─ sky.html            天空：晴天光网 / 多云 / 雷雨 / 霾 / 彩虹
 ├─ caustic.html        焦散水波（WebGL）
@@ -53,7 +53,7 @@ corvus-weather-fx/
 ├─ weather.js          实时天气 → 特效参数
 ├─ demo/chat.html      假聊天页：演示气泡溅水与积雪
 ├─ screenshots/        手机预览截图（WebP）
-├─ wallpapers/         演示壁纸（花瓣免费素材，打包成 walls.js 内嵌 dataURL）
+├─ wallpapers/         演示壁纸（花瓣免费素材，打包成 web_walls.js / walls.js 内嵌 dataURL）
 ├─ assets/bolts/       雷雨用的 5 张闪电图（MIT，来源见 THIRD-PARTY）
 └─ vendor/raindrop-fx/ 雨水玻璃引擎（MIT）
 ```
@@ -73,7 +73,7 @@ corvus-weather-fx/
 一个 430×900 的假手机，里面是真的聊天界面 + 四层特效 iframe，量气泡矩形、发 `setBubbles`、换壁纸都照真实用法做，可以直接当「接入后的样子」参考。
 
 - 左边面板：切 12 档特效、拖数量/速度/浓度；
-- 右下角六张预设壁纸（霜林 / 雾林 / 碧水 / 海光 / 落花 / 窗边，和 `index.html` 是同一套，来自 `wallpapers/walls.js`）+ **「选一张自己的壁纸」**：走 `FileReader.readAsDataURL` 转成 dataURL，同时铺到 `.phone` 底色和 `glass.html` 的 `setBackground`。**只在本地预览，不发任何请求**；删掉 `wallpapers/walls.js` 会自动退回现画的同色调底色。
+- 右下角六张竖版预设壁纸（霜林 / 雾林 / 碧水 / 海光 / 落花 / 窗边，来自 `wallpapers/walls.js`；全屏演示台另用四张横版的 `web_walls.js`）+ **「选一张自己的壁纸」**：走 `FileReader.readAsDataURL` 转成 dataURL，同时铺到 `.phone` 底色和 `glass.html` 的 `setBackground`。**只在本地预览，不发任何请求**；删掉 `wallpapers/walls.js` 会自动退回现画的同色调底色。
 - 地址参数：`?fx=` 选档（`rain` / `slant` / `soft` / `fog` / `glass` / `caustic` / `clear` / `cloudy` / `storm` / `haze` / `rainbow` / `off`），`?wall=1~6` 选预设壁纸，`?shot=1` 隐藏面板并固定成 430×900。
 
 ## 三种接入方式
@@ -257,9 +257,9 @@ weatherFx.setBubbles(list);
 
 ## 素材
 
-这个仓库**不带雨声**。演示页预置了六张壁纸（`wallpapers/walls.js`，来自花瓣的免费素材，页面标注为非版权图片、可免费使用）；`index.html` 和 `phone.html` 也都能点「用自己的图」换成自己电脑上的照片——这种自定义图片只在浏览器里显示，不会上传。`glass.html` 的背景是运行时用 Canvas 画的，`demo/chat.html` 是假聊天。
+这个仓库**不带雨声**。演示页预置了壁纸：全屏演示台四张横版（`wallpapers/web_walls.js`）、手机预览六张竖版（`wallpapers/walls.js`），都来自花瓣的免费素材，页面标注为非版权图片、可免费使用；`index.html` 和 `phone.html` 也都能点「用自己的图」换成自己电脑上的照片——这种自定义图片只在浏览器里显示，不会上传。`glass.html` 的背景是运行时用 Canvas 画的，`demo/chat.html` 是假聊天。
 
-如果删掉 `wallpapers/walls.js`，演示页会退回现画的柔焦底色，照样能看。
+如果删掉 `wallpapers/walls.js` 或 `wallpapers/web_walls.js`，对应的页面会退回现画的柔焦底色，照样能看。
 
 想要更像成品：自己放一张图当壁纸，雨声自己找一段无损循环音频（比如雨声站点的 CC0 素材），叠在页面底下即可。
 

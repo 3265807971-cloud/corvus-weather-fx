@@ -142,7 +142,8 @@ SOFTWARE.
 
 ## 7. 演示壁纸 —— 花瓣免费素材
 
-`wallpapers/walls.js` 里打包了六张演示壁纸（霜林 / 雾林 / 碧水 / 海光 / 落花 / 窗边），
+`wallpapers/web_walls.js` 打包了四张横版壁纸（暮色港湾 / 云山 / 天鹅湖 / 窗边的猫）给 `index.html` 全屏演示台，
+`wallpapers/walls.js` 打包了六张竖版壁纸（霜林 / 雾林 / 碧水 / 海光 / 落花 / 窗边）给 `phone.html` 手机预览。
 来源为花瓣（huaban.com），下载页标注为**非版权图片、可免费使用**。
 它们只用于演示页背景，不适用本仓库的 CC BY-NC-SA 4.0 许可；如果原作者有异议，联系作者会立刻替换或删除。
 
@@ -166,4 +167,5 @@ SOFTWARE.
 | `assets/bolts/*.webp` | xiaweizi/flutter_weather_bg | MIT |
 | `vendor/raindrop-fx` | SardineFish | MIT（+ MIT zogra-renderer、0BSD tslib） |
 | `weather.js` | 自写（思路参考 Corvus App） | CC BY-NC-SA 4.0 |
-| `wallpapers/walls.js` 六张演示壁纸 | 花瓣免费素材（标注非版权、可免费使用） | 仅演示，不适用本仓库许可 |
+| `wallpapers/web_walls.js` 四张全屏壁纸 | 花瓣免费素材（标注非版权、可免费使用） | 仅演示，不适用本仓库许可 |
+| `wallpapers/walls.js` 六张竖版壁纸 | 花瓣免费素材（标注非版权、可免费使用） | 仅演示，不适用本仓库许可 |
