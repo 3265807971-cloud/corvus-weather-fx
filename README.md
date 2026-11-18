@@ -2,10 +2,11 @@
 
 ## ▶ 先看效果
 
-**演示入口：[`index.html`](index.html)** —— 双击就能打开，不用装任何东西；左上角切 11 档特效，下面还能填城市看实时天气自动换。
+**在线演示：<https://3265807971-cloud.github.io/corvus-weather-fx/>** —— 打开就能看，不用装任何东西；左上角切 11 档特效，下面还能填城市看实时天气自动换。
 
-仓库公开并开启 GitHub Pages 后，入口地址就是：
-`https://3265807971-cloud.github.io/corvus-weather-fx/`
+手机预览：<https://3265807971-cloud.github.io/corvus-weather-fx/phone.html>
+
+也可以直接双击本地的 [`index.html`](index.html)，效果一样。
 
 ---
 
