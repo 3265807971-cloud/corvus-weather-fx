@@ -137,7 +137,7 @@
     <div class="wall-row" id="wallRow"></div>
     <button class="filebtn" id="wallBtn" type="button">用自己的图</button>
     <input id="wallFile" type="file" accept="image/*" hidden>
-    <div class="wall-note">四张都是页面现画的，不打包图片。自己的图只在本机显示，不上传。</div>
+    <div class="wall-note">四张是页面现画的柔焦底色，不打包图片。自己的图只在本机显示，不上传。</div>
   </div>
 
   <div class="group">
@@ -254,127 +254,58 @@
   const wallRow = document.getElementById('wallRow');
   let wallUrl = '';        // 给雨水玻璃那层当背景的 dataURL
 
+  // 四张柔焦底色（跟雨水玻璃里那张同一套画法：深色渐变 + 虚焦光斑）
   const WALLS = [
-    { name: '黄昏山谷',
-      sky: [[0, '#151b30'], [0.34, '#3b3850'], [0.6, '#855c60'], [0.82, '#cf8c68'], [1, '#f0c086']],
-      glow: { x: 0.7, y: 0.74, r: 0.55, color: 'rgba(255,198,132,.55)' },
-      ridges: [
-        { y: 0.5,  amp: 0.095, top: '#4c4258', bot: '#302b40' },
-        { y: 0.62, amp: 0.13,  top: '#332e45', bot: '#221e30' },
-        { y: 0.78, amp: 0.17,  top: '#1a1a29', bot: '#0d0e17' }
-      ],
-      mist: 'rgba(222,188,180,.26)', stars: 0 },
     { name: '夜色',
-      sky: [[0, '#05070f'], [0.35, '#0b1324'], [0.68, '#152139'], [1, '#26364f']],
-      glow: { x: 0.78, y: 0.2, r: 0.24, color: 'rgba(198,220,255,.55)' },
-      ridges: [
-        { y: 0.54, amp: 0.1,  top: '#22304a', bot: '#141c2e' },
-        { y: 0.66, amp: 0.13, top: '#182234', bot: '#0e1422' },
-        { y: 0.8,  amp: 0.16, top: '#0c111c', bot: '#05070d' }
-      ],
-      mist: 'rgba(150,180,220,.16)', stars: 260 },
-    { name: '雾林',
-      sky: [[0, '#1d2c26'], [0.4, '#33463c'], [0.72, '#61746a'], [1, '#a3b2a2']],
-      glow: { x: 0.42, y: 0.55, r: 0.5, color: 'rgba(226,244,224,.4)' },
-      ridges: [
-        { y: 0.5,  amp: 0.11, top: '#4c6154', bot: '#2f4038' },
-        { y: 0.64, amp: 0.14, top: '#31453b', bot: '#1d2c25' },
-        { y: 0.8,  amp: 0.17, top: '#15221c', bot: '#0a120e' }
-      ],
-      mist: 'rgba(214,232,214,.32)', stars: 0 },
+      linear: ['#101a2c', '#1a2438', '#0f151d'],
+      blobs: [[0.20, 0.18, 0.55, 'rgba(120,160,255,.38)'], [0.82, 0.12, 0.50, 'rgba(180,130,255,.24)'],
+              [0.55, 0.86, 0.42, 'rgba(90,120,190,.18)']] },
+    { name: '黄昏',
+      linear: ['#2a2437', '#4a3a42', '#6b4a3a'],
+      blobs: [[0.24, 0.20, 0.50, 'rgba(255,196,120,.42)'], [0.80, 0.26, 0.45, 'rgba(255,130,120,.28)'],
+              [0.45, 0.90, 0.40, 'rgba(255,160,110,.16)']] },
+    { name: '森林',
+      linear: ['#0e1d1a', '#173029', '#0b1512'],
+      blobs: [[0.28, 0.16, 0.50, 'rgba(140,255,214,.22)'], [0.76, 0.30, 0.45, 'rgba(90,190,170,.20)'],
+              [0.40, 0.78, 0.38, 'rgba(60,140,120,.18)']] },
     { name: '素灰',
-      sky: [[0, '#2b2f35'], [0.42, '#464c54'], [0.75, '#727880'], [1, '#a8acb1']],
-      glow: { x: 0.5, y: 0.62, r: 0.5, color: 'rgba(240,242,246,.3)' },
-      ridges: [
-        { y: 0.52, amp: 0.1,  top: '#5a6068', bot: '#3e434a' },
-        { y: 0.66, amp: 0.13, top: '#3c4047', bot: '#282b31' },
-        { y: 0.81, amp: 0.16, top: '#1c1f24', bot: '#101216' }
-      ],
-      mist: 'rgba(225,228,232,.22)', stars: 0 }
+      linear: ['#2c3036', '#3a3f46', '#23272c'],
+      blobs: [[0.30, 0.20, 0.50, 'rgba(255,255,255,.16)'], [0.78, 0.72, 0.40, 'rgba(190,205,220,.12)']] }
   ];
 
-  // 固定种子的伪随机，保证每次画出来的星星/山脊一样
-  function rng(seed) {
-    return function () {
-      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
-
-  function ridge(g, w, h, r, seed) {
-    const base = h * r.y;
-    g.beginPath();
-    g.moveTo(0, h);
-    g.lineTo(0, base);
-    for (let x = 0; x <= w; x += 5) {
-      const t = x / w;
-      // 用 |sin| 叠出「山尖」，比纯正弦更像山脊，不会像一条波浪线
-      const big  = Math.abs(Math.sin(t * 6.283 * 1.05 + seed));
-      const mid  = Math.abs(Math.sin(t * 6.283 * 2.7 + seed * 2.3 + 1.1));
-      const fine = Math.sin(t * 6.283 * 7.3 + seed * 4.7);
-      const peak = Math.pow(big * 0.72 + mid * 0.28, 0.72);
-      const y = base - h * r.amp * (0.12 + 0.95 * peak) - h * r.amp * 0.1 * fine;
-      g.lineTo(x, y);
-    }
-    g.lineTo(w, h);
-    g.closePath();
-    const lg = g.createLinearGradient(0, base - h * r.amp, 0, h);
-    lg.addColorStop(0, r.top);
-    lg.addColorStop(1, r.bot);
-    g.fillStyle = lg;
-    g.fill();
-  }
-
+  // 深色渐变 + 几团虚焦光斑，出图柔和，不会显得像画出来的卡通画
   function paintWall(wall, w, h) {
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     const g = c.getContext('2d');
 
-    // 天空
-    const sky = g.createLinearGradient(0, 0, 0, h);
-    for (const [stop, color] of wall.sky) sky.addColorStop(stop, color);
-    g.fillStyle = sky;
+    const lg = g.createLinearGradient(0, 0, 0, h);
+    wall.linear.forEach(function (color, i, arr) {
+      lg.addColorStop(i / (arr.length - 1), color);
+    });
+    g.fillStyle = lg;
     g.fillRect(0, 0, w, h);
 
-    // 光
-    const gl = wall.glow;
-    const gr = g.createRadialGradient(gl.x * w, gl.y * h, 0, gl.x * w, gl.y * h, gl.r * Math.max(w, h));
-    gr.addColorStop(0, gl.color);
-    gr.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = gr;
-    g.fillRect(0, 0, w, h);
-
-    // 星星（只有夜色）
-    if (wall.stars) {
-      const rand = rng(7);
-      for (let i = 0; i < wall.stars; i++) {
-        const x = rand() * w, y = rand() * h * 0.6;
-        const a = 0.2 + rand() * 0.7;
-        const s = rand() < 0.88 ? 1 : 1.8;
-        g.fillStyle = 'rgba(230,240,255,' + a.toFixed(2) + ')';
-        g.fillRect(x, y, s, s);
-      }
+    g.filter = 'blur(' + Math.round(Math.min(w, h) * 0.09) + 'px)';
+    for (const b of wall.blobs) {
+      const rad = Math.max(w, h) * b[2] * 0.5;
+      const rg = g.createRadialGradient(b[0] * w, b[1] * h, 0, b[0] * w, b[1] * h, rad);
+      rg.addColorStop(0, b[3]);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg;
+      g.beginPath();
+      g.arc(b[0] * w, b[1] * h, rad, 0, Math.PI * 2);
+      g.fill();
     }
+    g.filter = 'none';
 
-    // 三层山脊，越近越暗
-    ridge(g, w, h, wall.ridges[0], 1.7);
-    ridge(g, w, h, wall.ridges[1], 4.2);
-    // 山脚的雾
-    const m = g.createLinearGradient(0, h * 0.5, 0, h * 0.92);
-    m.addColorStop(0, 'rgba(0,0,0,0)');
-    m.addColorStop(1, wall.mist);
-    g.fillStyle = m;
+    // 暗角
+    const vg = g.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.25,
+                                      w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+    g.fillStyle = vg;
     g.fillRect(0, 0, w, h);
-    ridge(g, w, h, wall.ridges[2], 9.4);
-
-    // 轻微胶片颗粒，压住渐变的「塑料感」
-    const rand = rng(21);
-    for (let i = 0; i < 2600; i++) {
-      g.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,.018)' : 'rgba(0,0,0,.022)';
-      g.fillRect(rand() * w, rand() * h, 1, 1);
-    }
 
     return c.toDataURL('image/jpeg', 0.9);
   }
