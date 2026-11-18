@@ -125,6 +125,18 @@ function notifyReady(){
   }
 }
 requestAnimationFrame(function (){ requestAnimationFrame(notifyReady); });
+// 家长页可能比这里晚绑定监听（它的壁纸数据文件很大），那就一直重报，
+// 直到收到家长发来的第一条消息（或 30 秒）为止。
+(function reannounceReady(){
+  var timer = setInterval(function(){
+    if (window.parent && window.parent !== window) {
+      try { window.parent.postMessage({ type: 'weather-glass-ready' }, '*'); } catch (_) {}
+    }
+  }, 600);
+  function stop(){ clearInterval(timer); }
+  window.addEventListener('message', stop, { once: true });
+  setTimeout(stop, 30000);
+})();
 </script>
 </body>
 </html>

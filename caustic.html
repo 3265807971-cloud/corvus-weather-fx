@@ -88,6 +88,16 @@ function notifyReady(){
   if(window.parent&&window.parent!==window){try{window.parent.postMessage({type:'weather-caustic-ready'},'*');}catch(_){}}
 }
 requestAnimationFrame(()=>requestAnimationFrame(notifyReady));
+// 家长页可能比这里晚绑定监听（它的壁纸数据文件很大），那就一直重报，
+// 直到收到家长发来的第一条消息（或 30 秒）为止。
+(function reannounceReady(){
+  var timer=setInterval(function(){
+    if(window.parent&&window.parent!==window){try{window.parent.postMessage({type:'weather-caustic-ready'},'*');}catch(_){}}
+  },600);
+  function stop(){clearInterval(timer);}
+  window.addEventListener('message',stop,{once:true});
+  setTimeout(stop,30000);
+})();
 // 水波很慢，30 帧就够；按时间推进，掉帧也不影响波的快慢。
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-lastNow)/1000,0.1);lastNow=now;for(const ripple of drops)ripple[2]+=dt*0.55;while(drops.length&&drops[drops.length-1][2]>2.05)drops.pop();if(now-lastDraw<33)return;lastDraw=now;
 for(let i=0;i<8;i++){const ripple=drops[i]||[0,0,10,0];packed[i*4]=ripple[0];packed[i*4+1]=ripple[1];packed[i*4+2]=ripple[2];packed[i*4+3]=ripple[3];}

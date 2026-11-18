@@ -204,7 +204,6 @@
   <a class="backlink" href="index.html">← 回到全屏对比台</a>
 </div>
 
-<script src="wallpapers/walls.js"></script>
 <script>
 (function () {
   'use strict';
@@ -255,16 +254,25 @@
     else queue.push(msg);
   }
 
-  window.addEventListener('message', function (e) {
-    const name = READY_TYPE[e.data && e.data.type];
-    if (!name) return;
+  function markReady(name) {
+    if (ready[name]) return;
     ready[name] = true;
     const queue = pending[name];
     pending[name] = [];
     for (const msg of queue) {
       try { frameEls[name].contentWindow.postMessage(msg, '*'); } catch (_) {}
     }
+  }
+
+  window.addEventListener('message', function (e) {
+    const name = READY_TYPE[e.data && e.data.type];
+    if (name) markReady(name);
   });
+
+  // 兜底：ready 消息万一比这个监听还早（慢网冷缓存），到 iframe 的 load 时补一次。
+  for (const name of Object.keys(frameEls)) {
+    frameEls[name].addEventListener('load', function () { markReady(name); });
+  }
 
   /* ---------------- 气泡位置 → iframe ---------------- */
   const bubbleEls = Array.prototype.slice.call(
@@ -320,6 +328,8 @@
   });
   const wallRow = document.getElementById('wallRow');
   let wallDataUrl = null;      // 雨水玻璃要用的背景（dataURL，跨 iframe 安全）
+  let currentWallIdx = 0;      // 当前选中的预置壁纸
+  let customWall = false;      // 换成自己的图之后，就不再覆盖
 
   // 把同一套配色画成图，给 raindrop-fx 当背景
   function paintWall(wall, w, h) {
@@ -348,9 +358,10 @@
     wallEl.style.backgroundImage = image;
     wallEl.style.backgroundSize = isImage ? 'cover' : '';
   }
-  function applyWall(w) {
+  function applyWall(w, i) {
     setWall(wallImage(w), !!w.src);
     wallDataUrl = w.src || paintWall(w, 860, 1800);
+    if (typeof i === 'number') currentWallIdx = i;
     pushGlassBackground();
   }
   function markSwatch(idx) {
@@ -368,7 +379,8 @@
     b.style.backgroundSize = 'cover';
     b.style.backgroundPosition = 'center';
     b.addEventListener('click', function () {
-      applyWall(w);
+      customWall = false;
+      applyWall(w, i);
       markSwatch(i);
     });
     wallRow.appendChild(b);
@@ -382,6 +394,7 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function () {
+      customWall = true;
       wallDataUrl = String(reader.result);
       setWall('url("' + wallDataUrl + '")', true);
       markSwatch(-1);
@@ -541,8 +554,32 @@
   const fxKey = KEY_BY_PARAM[qs.get('fx') || ''] || 'slant';
 
   const wallIdx = Math.max(0, Math.min(WALLS.length - 1, Number(qs.get('wall') || 0) - 1));
-  applyWall(WALLS[wallIdx]);
+  applyWall(WALLS[wallIdx], wallIdx);
   markSwatch(wallIdx);
+
+  // 壁纸数据（2MB 的 dataURL）异步加载，不挡主脚本——
+  // 否则慢网冷缓存时，父页的监听会比 iframe 的 ready 消息还晚，特效就切不动。
+  (function loadWallData() {
+    const s = document.createElement('script');
+    s.src = 'wallpapers/walls.js';
+    s.onload = function () {
+      const local = window.CORVUS_WALLS || {};
+      let added = false;
+      WALLS.forEach(function (w, i) {
+        if (w.src || !local[w.key]) return;
+        w.src = local[w.key];
+        const b = wallRow.children[i];
+        if (b) {
+          b.style.background = wallImage(w);
+          b.style.backgroundSize = 'cover';
+          b.style.backgroundPosition = 'center';
+        }
+        added = true;
+      });
+      if (added && !customWall) applyWall(WALLS[currentWallIdx], currentWallIdx);
+    };
+    document.body.appendChild(s);
+  })();
 
   select(fxKey);
 })();

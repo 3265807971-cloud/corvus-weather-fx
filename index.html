@@ -159,7 +159,6 @@
 
 <div id="tip">← 点左边切特效；雨雪那档可以拖参数</div>
 
-<script src="wallpapers/web_walls.js"></script>
 <script src="weather.js"></script>
 <script>
 (function () {
@@ -236,9 +235,8 @@
     else queue.push(msg);
   }
 
-  window.addEventListener('message', function (e) {
-    const name = READY_TYPE[e.data && e.data.type];
-    if (!name) return;
+  function markReady(name) {
+    if (ready[name]) return;
     ready[name] = true;
     const queue = pending[name];
     pending[name] = [];
@@ -246,7 +244,18 @@
       try { frameEls[name].contentWindow.postMessage(msg, '*'); } catch (_) {}
     }
     if (name === 'glass') pushGlassBg();
+  }
+
+  window.addEventListener('message', function (e) {
+    const name = READY_TYPE[e.data && e.data.type];
+    if (name) markReady(name);
   });
+
+  // 兜底：iframe 的 load 一定在它自己的脚本之后。万一 ready 消息来得比
+  // 这个监听还早（慢网、冷缓存时真会发生），到 load 时补一次。
+  for (const name of Object.keys(frameEls)) {
+    frameEls[name].addEventListener('load', function () { markReady(name); });
+  }
 
   /* ---------------- 壁纸 ----------------
      四张「山谷」都是运行时用 Canvas 画的，仓库里不带任何图片。
@@ -254,6 +263,8 @@
   const wallEl = document.getElementById('wall');
   const wallRow = document.getElementById('wallRow');
   let wallUrl = '';        // 给雨水玻璃那层当背景的 dataURL
+  let currentWall = 0;     // 当前选中的预置壁纸
+  let customWall = false;  // 换成自己的图之后，就不再覆盖
 
   // 壁纸：照片打包在 wallpapers/web_walls.js（花瓣免费素材）；
   // 没有它、或者某张名字对不上，就退回下面这层运行时画的柔焦底色。
@@ -344,6 +355,7 @@
     wallEl.style.backgroundSize = w.src ? 'cover, cover' : 'cover';
     wallEl.style.backgroundPosition = 'center';
     wallUrl = w.src || painted;
+    currentWall = i;
     markWall(i);
     pushGlassBg();
   }
@@ -370,12 +382,37 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function () {
+      customWall = true;
       useWallData(String(reader.result));
       markWall(-1);
       pushGlassBg();
     };
     reader.readAsDataURL(file);
   });
+
+  // 壁纸数据（1MB+ 的 dataURL）异步加载，不挡主脚本——
+  // 否则慢网冷缓存时，父页的监听会比 iframe 的 ready 消息还晚，特效就切不动。
+  // 先铺现画底色，照片到了再换上。
+  (function loadWallData() {
+    const s = document.createElement('script');
+    s.src = 'wallpapers/web_walls.js';
+    s.onload = function () {
+      const local = window.CORVUS_WEB_WALLS || {};
+      let added = false;
+      WALLS.forEach(function (w, i) {
+        if (w.src || !local[w.key]) return;
+        w.src = local[w.key];
+        const b = wallRow.children[i];
+        if (b) {
+          b.style.backgroundImage = 'url("' + w.src + '"), url("' + paintWall(w, 174, 126) + '")';
+          b.style.backgroundSize = 'cover, cover';
+        }
+        added = true;
+      });
+      if (added && !customWall) applyWall(currentWall);
+    };
+    document.body.appendChild(s);
+  })();
 
   // 默认用第一张：暮色港湾
   applyWall(0);
