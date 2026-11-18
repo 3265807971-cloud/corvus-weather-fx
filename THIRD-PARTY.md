@@ -1,6 +1,6 @@
 # 第三方素材与代码
 
-本仓库的代码主体是 MIT（见 [LICENSE](LICENSE)），下面这些不是，或者需要单独署名。
+本仓库自己写的代码是 **CC BY-NC-SA 4.0（署名 · 非商业 · 相同方式共享，见 [LICENSE](LICENSE)）**，别人不能商用。下面这些第三方组件按各自的许可。
 
 ---
 
@@ -36,10 +36,10 @@ Shadertoy 的默认内容协议是 **Creative Commons Attribution-NonCommercial-
 > 非商业 — 不得用于商业用途；
 > 相同方式共享 — 修改后的作品必须使用相同协议发布。
 
-所以 **`caustic.html` 整个文件按 CC BY-NC-SA 3.0 使用**，不适用本仓库的 MIT 许可。
+所以 **`caustic.html` 整个文件按 CC BY-NC-SA 3.0 使用**，不适用本仓库的 CC BY-NC-SA 4.0 许可。
 周围的水面波动、点击涟漪、树荫/光斑遮罩是自写的，但它们跟这段函数编在同一个 shader 里，按「相同方式共享」整体处理最稳妥。
 
-**要商用**：把 `tileableCaustic()` 换掉（自己写一份焦散，或换成可商用的实现），其余部分就可以回到 MIT。
+**要商用**：本仓库整体本来就不允许商用（CC BY-NC-SA 4.0）；就算换成别的用途，也要先把 `tileableCaustic()` 换掉（自己写一份焦散，或换成其它实现）。
 
 ## 2. 斜飘雪花 —— 视觉参数参考，代码独立实现
 
@@ -144,7 +144,7 @@ SOFTWARE.
 
 `wallpapers/walls.js` 里打包了六张演示壁纸（霜林 / 雾林 / 碧水 / 海光 / 落花 / 窗边），
 来源为花瓣（huaban.com），下载页标注为**非版权图片、可免费使用**。
-它们只用于演示页背景，不适用本仓库的 MIT 许可；如果原作者有异议，联系作者会立刻替换或删除。
+它们只用于演示页背景，不适用本仓库的 CC BY-NC-SA 4.0 许可；如果原作者有异议，联系作者会立刻替换或删除。
 
 ## 8. 没有进仓库的东西
 
@@ -155,15 +155,15 @@ SOFTWARE.
 
 | 文件 / 素材 | 来源 | 许可 |
 |---|---|---|
-| `fx.html` 斜飘雪花 / 垂直雨丝 / 柔光飘雪 / 柔雾 | 自写（雪花视觉参数见第 2 节） | MIT |
-| `fx.html` 边缘装饰雪花（随机大小 / 缩放呼吸 / 沿边分布） | 自写；雪花图形见第 3 节 | MIT |
-| `fx.html` 气泡溅水 / 积雪 / 遮挡减量 / 自动吹散 | 自写（灵感见第 0 节） | MIT |
+| `fx.html` 斜飘雪花 / 垂直雨丝 / 柔光飘雪 / 柔雾 | 自写（雪花视觉参数见第 2 节） | CC BY-NC-SA 4.0 |
+| `fx.html` 边缘装饰雪花（随机大小 / 缩放呼吸 / 沿边分布） | 自写；雪花图形见第 3 节 | CC BY-NC-SA 4.0 |
+| `fx.html` 气泡溅水 / 积雪 / 遮挡减量 / 自动吹散 | 自写（灵感见第 0 节） | CC BY-NC-SA 4.0 |
 | `fx.html` 边缘冰晶白霜 | BingIndexWebFile | MIT |
 | `fx.html` 20 个 SVG 雪花 | 小红书可用素材 → Gemini 转矢量 | 素材可用 / 自制 |
-| `sky.html` 晴天光网 / 多云 / 雷雨 / 霾 / 彩虹 | 自写 | MIT |
+| `sky.html` 晴天光网 / 多云 / 雷雨 / 霾 / 彩虹 | 自写 | CC BY-NC-SA 4.0 |
 | `caustic.html` 焦散函数 | Dave Hoskins / joltz0r | **CC BY-NC-SA 3.0** |
-| `caustic.html` 其余水面/涟漪/遮罩 | 自写 | MIT |
+| `caustic.html` 其余水面/涟漪/遮罩 | 自写 | CC BY-NC-SA 4.0 |
 | `assets/bolts/*.webp` | xiaweizi/flutter_weather_bg | MIT |
 | `vendor/raindrop-fx` | SardineFish | MIT（+ MIT zogra-renderer、0BSD tslib） |
-| `weather.js` | 自写（思路参考 Corvus App） | MIT |
-| `wallpapers/walls.js` 六张演示壁纸 | 花瓣免费素材（标注非版权、可免费使用） | 仅演示，不适用 MIT |
+| `weather.js` | 自写（思路参考 Corvus App） | CC BY-NC-SA 4.0 |
+| `wallpapers/walls.js` 六张演示壁纸 | 花瓣免费素材（标注非版权、可免费使用） | 仅演示，不适用本仓库许可 |
