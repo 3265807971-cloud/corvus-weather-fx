@@ -140,9 +140,14 @@ SOFTWARE.
   `weather.js` 用它取当前天气。wttr.in 本身是开源项目（MIT），数据源为 World Weather Online 等。
   请自行遵守其使用限制，不要高频轮询（示例是 30 分钟一次）。
 
-## 7. 没有进仓库的东西
+## 7. 演示壁纸 —— 花瓣免费素材
 
-- **壁纸**：演示用的背景是 CSS 渐变 / 运行时 Canvas 画的。
+`wallpapers/walls.js` 里打包了六张演示壁纸（霜林 / 雾林 / 碧水 / 海光 / 落花 / 窗边），
+来源为花瓣（huaban.com），下载页标注为**非版权图片、可免费使用**。
+它们只用于演示页背景，不适用本仓库的 MIT 许可；如果原作者有异议，联系作者会立刻替换或删除。
+
+## 8. 没有进仓库的东西
+
 - **雨声**：本仓库不含任何音频。
 - **雨窗（Corvus 的私人功能）**、App 前端代码：都不在仓库里。
 
@@ -161,3 +166,4 @@ SOFTWARE.
 | `assets/bolts/*.webp` | xiaweizi/flutter_weather_bg | MIT |
 | `vendor/raindrop-fx` | SardineFish | MIT（+ MIT zogra-renderer、0BSD tslib） |
 | `weather.js` | 自写（思路参考 Corvus App） | MIT |
+| `wallpapers/walls.js` 六张演示壁纸 | 花瓣免费素材（标注非版权、可免费使用） | 仅演示，不适用 MIT |

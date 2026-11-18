@@ -53,7 +53,7 @@ corvus-weather-fx/
 ├─ weather.js          实时天气 → 特效参数
 ├─ demo/chat.html      假聊天页：演示气泡溅水与积雪
 ├─ screenshots/        手机预览截图（WebP）
-├─ wallpapers/         （本机可选，不进仓库）演示页优先读这里的照片
+├─ wallpapers/         演示壁纸（花瓣免费素材，打包成 walls.js 内嵌 dataURL）
 ├─ assets/bolts/       雷雨用的 5 张闪电图（MIT，来源见 THIRD-PARTY）
 └─ vendor/raindrop-fx/ 雨水玻璃引擎（MIT）
 ```
@@ -257,9 +257,9 @@ weatherFx.setBubbles(list);
 
 ## 素材
 
-这个仓库**不带壁纸、不带雨声**。演示页的背景是运行时用 Canvas 画的柔和虚焦底色，`index.html` 和 `phone.html` 都可以点「用自己的图」换成自己电脑上的照片——图片只在浏览器里显示，不会上传，也不进仓库。`glass.html` 的背景同样是运行时画的，`demo/chat.html` 是假聊天。
+这个仓库**不带雨声**。演示页预置了六张壁纸（`wallpapers/walls.js`，来自花瓣的免费素材，页面标注为非版权图片、可免费使用）；`index.html` 和 `phone.html` 也都能点「用自己的图」换成自己电脑上的照片——这种自定义图片只在浏览器里显示，不会上传。`glass.html` 的背景是运行时用 Canvas 画的，`demo/chat.html` 是假聊天。
 
-如果本机有 `wallpapers/walls.js`（自己收集的照片，已写进 `.gitignore`），演示页会优先用它当壁纸；没有这个文件就退回现画的底色，克隆下来直接双击也能看。
+如果删掉 `wallpapers/walls.js`，演示页会退回现画的柔焦底色，照样能看。
 
 想要更像成品：自己放一张图当壁纸，雨声自己找一段无损循环音频（比如雨声站点的 CC0 素材），叠在页面底下即可。
 
