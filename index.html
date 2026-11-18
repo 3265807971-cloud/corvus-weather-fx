@@ -91,6 +91,21 @@
   .auto button.off{border-color:var(--panel-line);background:rgba(255,255,255,.06);color:var(--ink)}
   #autoStatus{font-size:12px;color:var(--ink-dim);margin-top:8px;min-height:17px}
 
+  .wall-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .swatch{
+    appearance:none;width:58px;height:42px;border-radius:10px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.18);background-size:cover;background-position:center;
+    transition:transform .18s,border-color .18s;padding:0;
+  }
+  .swatch:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.4)}
+  .swatch.on{border-color:rgba(159,216,255,.85);box-shadow:0 0 0 2px rgba(159,216,255,.28)}
+  .filebtn{
+    appearance:none;border:1px dashed rgba(255,255,255,.24);background:rgba(255,255,255,.05);
+    color:var(--ink);border-radius:10px;padding:11px 12px;font-size:12px;cursor:pointer;
+  }
+  .filebtn:hover{background:rgba(255,255,255,.1)}
+  .wall-note{font-size:11px;color:var(--ink-dim);margin-top:8px;line-height:1.6}
+
   #tip{position:fixed;right:14px;bottom:14px;z-index:9;font-size:12px;color:rgba(255,255,255,.55);
     text-align:right;pointer-events:none}
 </style>
@@ -116,6 +131,14 @@
   <h1>Corvus 天气特效</h1>
   <div class="sub">11 种特效 + 实时天气自动切换 · 本地演示</div>
   <a class="ph-link" href="phone.html">手机预览（可换自己的壁纸）→</a>
+
+  <div class="group">
+    <div class="group-title">壁纸</div>
+    <div class="wall-row" id="wallRow"></div>
+    <button class="filebtn" id="wallBtn" type="button">用自己的图</button>
+    <input id="wallFile" type="file" accept="image/*" hidden>
+    <div class="wall-note">四张都是页面现画的，不打包图片。自己的图只在本机显示，不上传。</div>
+  </div>
 
   <div class="group">
     <div class="group-title">特效</div>
@@ -221,7 +244,193 @@
     for (const msg of queue) {
       try { frameEls[name].contentWindow.postMessage(msg, '*'); } catch (_) {}
     }
+    if (name === 'glass') pushGlassBg();
   });
+
+  /* ---------------- 壁纸 ----------------
+     四张「山谷」都是运行时用 Canvas 画的，仓库里不带任何图片。
+     选自己的图走 FileReader，只在本地预览。 */
+  const wallEl = document.getElementById('wall');
+  const wallRow = document.getElementById('wallRow');
+  let wallUrl = '';        // 给雨水玻璃那层当背景的 dataURL
+
+  const WALLS = [
+    { name: '黄昏山谷',
+      sky: [[0, '#151b30'], [0.34, '#3b3850'], [0.6, '#855c60'], [0.82, '#cf8c68'], [1, '#f0c086']],
+      glow: { x: 0.7, y: 0.74, r: 0.55, color: 'rgba(255,198,132,.55)' },
+      ridges: [
+        { y: 0.5,  amp: 0.095, top: '#4c4258', bot: '#302b40' },
+        { y: 0.62, amp: 0.13,  top: '#332e45', bot: '#221e30' },
+        { y: 0.78, amp: 0.17,  top: '#1a1a29', bot: '#0d0e17' }
+      ],
+      mist: 'rgba(222,188,180,.26)', stars: 0 },
+    { name: '夜色',
+      sky: [[0, '#05070f'], [0.35, '#0b1324'], [0.68, '#152139'], [1, '#26364f']],
+      glow: { x: 0.78, y: 0.2, r: 0.24, color: 'rgba(198,220,255,.55)' },
+      ridges: [
+        { y: 0.54, amp: 0.1,  top: '#22304a', bot: '#141c2e' },
+        { y: 0.66, amp: 0.13, top: '#182234', bot: '#0e1422' },
+        { y: 0.8,  amp: 0.16, top: '#0c111c', bot: '#05070d' }
+      ],
+      mist: 'rgba(150,180,220,.16)', stars: 260 },
+    { name: '雾林',
+      sky: [[0, '#1d2c26'], [0.4, '#33463c'], [0.72, '#61746a'], [1, '#a3b2a2']],
+      glow: { x: 0.42, y: 0.55, r: 0.5, color: 'rgba(226,244,224,.4)' },
+      ridges: [
+        { y: 0.5,  amp: 0.11, top: '#4c6154', bot: '#2f4038' },
+        { y: 0.64, amp: 0.14, top: '#31453b', bot: '#1d2c25' },
+        { y: 0.8,  amp: 0.17, top: '#15221c', bot: '#0a120e' }
+      ],
+      mist: 'rgba(214,232,214,.32)', stars: 0 },
+    { name: '素灰',
+      sky: [[0, '#2b2f35'], [0.42, '#464c54'], [0.75, '#727880'], [1, '#a8acb1']],
+      glow: { x: 0.5, y: 0.62, r: 0.5, color: 'rgba(240,242,246,.3)' },
+      ridges: [
+        { y: 0.52, amp: 0.1,  top: '#5a6068', bot: '#3e434a' },
+        { y: 0.66, amp: 0.13, top: '#3c4047', bot: '#282b31' },
+        { y: 0.81, amp: 0.16, top: '#1c1f24', bot: '#101216' }
+      ],
+      mist: 'rgba(225,228,232,.22)', stars: 0 }
+  ];
+
+  // 固定种子的伪随机，保证每次画出来的星星/山脊一样
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function ridge(g, w, h, r, seed) {
+    const base = h * r.y;
+    g.beginPath();
+    g.moveTo(0, h);
+    g.lineTo(0, base);
+    for (let x = 0; x <= w; x += 5) {
+      const t = x / w;
+      // 用 |sin| 叠出「山尖」，比纯正弦更像山脊，不会像一条波浪线
+      const big  = Math.abs(Math.sin(t * 6.283 * 1.05 + seed));
+      const mid  = Math.abs(Math.sin(t * 6.283 * 2.7 + seed * 2.3 + 1.1));
+      const fine = Math.sin(t * 6.283 * 7.3 + seed * 4.7);
+      const peak = Math.pow(big * 0.72 + mid * 0.28, 0.72);
+      const y = base - h * r.amp * (0.12 + 0.95 * peak) - h * r.amp * 0.1 * fine;
+      g.lineTo(x, y);
+    }
+    g.lineTo(w, h);
+    g.closePath();
+    const lg = g.createLinearGradient(0, base - h * r.amp, 0, h);
+    lg.addColorStop(0, r.top);
+    lg.addColorStop(1, r.bot);
+    g.fillStyle = lg;
+    g.fill();
+  }
+
+  function paintWall(wall, w, h) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+
+    // 天空
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    for (const [stop, color] of wall.sky) sky.addColorStop(stop, color);
+    g.fillStyle = sky;
+    g.fillRect(0, 0, w, h);
+
+    // 光
+    const gl = wall.glow;
+    const gr = g.createRadialGradient(gl.x * w, gl.y * h, 0, gl.x * w, gl.y * h, gl.r * Math.max(w, h));
+    gr.addColorStop(0, gl.color);
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, w, h);
+
+    // 星星（只有夜色）
+    if (wall.stars) {
+      const rand = rng(7);
+      for (let i = 0; i < wall.stars; i++) {
+        const x = rand() * w, y = rand() * h * 0.6;
+        const a = 0.2 + rand() * 0.7;
+        const s = rand() < 0.88 ? 1 : 1.8;
+        g.fillStyle = 'rgba(230,240,255,' + a.toFixed(2) + ')';
+        g.fillRect(x, y, s, s);
+      }
+    }
+
+    // 三层山脊，越近越暗
+    ridge(g, w, h, wall.ridges[0], 1.7);
+    ridge(g, w, h, wall.ridges[1], 4.2);
+    // 山脚的雾
+    const m = g.createLinearGradient(0, h * 0.5, 0, h * 0.92);
+    m.addColorStop(0, 'rgba(0,0,0,0)');
+    m.addColorStop(1, wall.mist);
+    g.fillStyle = m;
+    g.fillRect(0, 0, w, h);
+    ridge(g, w, h, wall.ridges[2], 9.4);
+
+    // 轻微胶片颗粒，压住渐变的「塑料感」
+    const rand = rng(21);
+    for (let i = 0; i < 2600; i++) {
+      g.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,.018)' : 'rgba(0,0,0,.022)';
+      g.fillRect(rand() * w, rand() * h, 1, 1);
+    }
+
+    return c.toDataURL('image/jpeg', 0.9);
+  }
+
+  function useWallData(url) {
+    wallUrl = url;
+    wallEl.style.backgroundImage = 'url("' + url + '")';
+    wallEl.style.backgroundSize = 'cover';
+    wallEl.style.backgroundPosition = 'center';
+  }
+
+  function pushGlassBg() {
+    if (wallUrl) send('glass', { type: 'weather-glass', op: 'setBackground', value: wallUrl });
+  }
+
+  function markWall(idx) {
+    for (const b of wallRow.children) b.classList.toggle('on', Number(b.dataset.i) === idx);
+  }
+
+  const wallCache = {};
+  WALLS.forEach(function (w, i) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'swatch';
+    b.dataset.i = String(i);
+    b.title = w.name;
+    b.setAttribute('aria-label', '壁纸：' + w.name);
+    // 小图当按钮预览，省得四张 1600px 图一起画
+    b.style.backgroundImage = 'url("' + paintWall(w, 174, 126) + '")';
+    b.addEventListener('click', function () {
+      if (!wallCache[i]) wallCache[i] = paintWall(w, 1600, 1000);
+      useWallData(wallCache[i]);
+      markWall(i);
+      pushGlassBg();
+    });
+    wallRow.appendChild(b);
+  });
+
+  document.getElementById('wallBtn').addEventListener('click', function () {
+    document.getElementById('wallFile').click();
+  });
+  document.getElementById('wallFile').addEventListener('change', function () {
+    const file = this.files && this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      useWallData(String(reader.result));
+      markWall(-1);
+      pushGlassBg();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // 默认用第一张：黄昏山谷
+  useWallData(paintWall(WALLS[0], 1600, 1000));
+  markWall(0);
 
   /* ---------------- UI 状态 ---------------- */
   let active = 'off';
