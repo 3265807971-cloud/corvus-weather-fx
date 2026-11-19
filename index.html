@@ -420,6 +420,7 @@
   /* ---------------- UI 状态 ---------------- */
   let active = 'off';
   let fxParams = null;      // { count, speed, opacity }
+  let frostLevel = 22;      // 边缘冰晶透明度（0~100），默认 22 跟原来一样
   let skyStrength = 55;
   let stopAuto = null;
 
@@ -494,6 +495,14 @@
           send('fx', { type: 'weather-fx', op: 'setOpacity', value: v });
         })
       );
+      if (fxParams.effect === 'slant-snow') {
+        paramsEl.append(
+          slider('冰晶', frostLevel, 0, 100, 1, v => v + '%', function (v) {
+            frostLevel = v;
+            send('fx', { type: 'weather-fx', op: 'setFrostOpacity', value: v });
+          })
+        );
+      }
     } else if (def.page === 'sky' && def.sky) {
       paramsEl.className = 'group';
       const t = document.createElement('div');
@@ -542,6 +551,7 @@
       send('fx', { type: 'weather-fx', op: 'setOpacity', value: fxParams.opacity });
       // 边缘冰晶跟着斜飘雪花走；溅水只给雨丝；积雪只给柔光飘雪
       send('fx', { type: 'weather-fx', op: 'setFrost',      value: fxParams.effect === 'slant-snow' });
+      send('fx', { type: 'weather-fx', op: 'setFrostOpacity', value: frostLevel });
       send('fx', { type: 'weather-fx', op: 'setSplash',     value: key === 'streak' });
       send('fx', { type: 'weather-fx', op: 'setAccumulate', value: key === 'soft' });
       setBubblesMode(key === 'streak' || key === 'soft');

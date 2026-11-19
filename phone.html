@@ -408,6 +408,7 @@
   const paramsEl = document.getElementById('params');
   let active = 'off';
   let fxParams = null;
+  let frostLevel = 22;      // 边缘冰晶透明度（0~100），默认 22 跟原来一样
   let skyStrength = 55;
 
   for (const key of Object.keys(EFFECTS)) {
@@ -464,6 +465,14 @@
           send('fx', { type: 'weather-fx', op: 'setOpacity', value: v });
         })
       );
+      if (fxParams.effect === 'slant-snow') {
+        paramsEl.append(
+          slider('冰晶', frostLevel, 0, 100, 1, v => v + '%', function (v) {
+            frostLevel = v;
+            send('fx', { type: 'weather-fx', op: 'setFrostOpacity', value: v });
+          })
+        );
+      }
     } else if (def.page === 'sky' && def.sky) {
       paramsEl.className = 'group';
       const t = document.createElement('div');
@@ -521,6 +530,7 @@
       send('fx', { type: 'weather-fx', op: 'setSpeed',   value: fxParams.speed });
       send('fx', { type: 'weather-fx', op: 'setOpacity', value: fxParams.opacity });
       send('fx', { type: 'weather-fx', op: 'setFrost',      value: fxParams.effect === 'slant-snow' });
+      send('fx', { type: 'weather-fx', op: 'setFrostOpacity', value: frostLevel });
       send('fx', { type: 'weather-fx', op: 'setSplash',     value: key === 'streak' });
       send('fx', { type: 'weather-fx', op: 'setAccumulate', value: key === 'soft' });
       lastBubbleJson = '';

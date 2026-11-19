@@ -60,6 +60,7 @@
   #edgeFlakes {
     position: fixed; inset: 0; z-index: 4; overflow: hidden;
     pointer-events: none; display: none;
+    transition: opacity .2s linear;
   }
   #edgeFlakes.on { display: block; }
   .live-flake {
@@ -702,10 +703,13 @@
 
   function syncFrost() {
     const live = frostLive();
-    // 浓度只管白霜。拉到 0 = 白霜没了，雪花还在（要全没就把开关关掉）。
+    // 冰晶滑杆同时管白霜和点缀雪花：白霜按 0~100% 直接给；
+    // 雪花在默认 22% 时保持原样（倍率 1），往下拖跟着变淡，往上不额外加浓。
+    // 拉到 0 = 白霜和雪花一起没了，飘雪照常下。
     frostLayer.classList.toggle('on', live && frostOpacity > 0);
     frostLayer.style.setProperty('--frost-opacity', String(frostOpacity / 100));
-    edgeFlakes.classList.toggle('on', live);
+    edgeFlakes.style.opacity = String(Math.min(1, frostOpacity / 22));
+    edgeFlakes.classList.toggle('on', live && frostOpacity > 0);
     if (live) {
       if (!flakeTimer) renderEdgeFlakes();
     } else {
