@@ -159,9 +159,23 @@
   let frostOpacity = 22;
   let flakeTimer = 0;
 
+  // 预览页可以加 ?breeze=0 关掉「自动吹散」，方便一直堆着看。
+  const AUTO_BREEZE = !/[?&]breeze=0(?:&|$)/.test(location.search);
+
   // App 推过来的气泡矩形（CSS px = dp），{ i: id, l, t, r, b }
+  // l/t/r/b 是这一刻画出来的位置，tl/tt/tr/tb 是刚收到的新位置。
+  // 每帧往新位置挪一点：滑动时雪堆是「跟着滑过去」，不再是「啪一下跳上去」。
   let bubbleRects = [];
+  const bubbleById = new Map();
+  const driftSeenAt = new Map();   // id → 最后一次出现在气泡列表里的时间（毫秒）
+  let rectPushInterval = 350;      // 两次 setBubbles 大概隔多久（网页滑动时每帧，App 里偏慢）
+  let lastSetBubblesAt = 0;
   const snowDrifts = new Map();
+
+  // 倾斜（陀螺仪 / 手机怎么歪）：-1 往左歪，+1 往右歪，0 摆平。
+  // 雪堆会往低的一侧流，流到气泡边上就掉下去。没人传就是 0，等于关着。
+  let tiltTarget = 0;
+  let tilt = 0;
 
   let w = 0, h = 0;
   let particles = [];
@@ -452,11 +466,29 @@
   // ---------- 积雪 ----------
   function clearDrifts() {
     snowDrifts.forEach(bins => bins.fill(0));
+    driftSeenAt.clear();
     breezeActive = false;
     breezeProgress = 0;
     breezeStrength = 0;
     windTimer = 0;
     mistParticles = [];
+  }
+
+  // 气泡顶边只有中间一段是平的，两侧是圆弧 —— 雪画到圆弧上就会悬空，
+  // 跟气泡之间空出一条缝（曼曼 1124 提的）。所以雪只堆在平顶上：
+  // 到圆弧开始的地方收边，倾斜时也从那儿掉下去。
+  // App 没把圆角传过来，就按气泡高度估 —— 聊天气泡的圆角大多在 18~24。
+  function driftFlatInset(rect) {
+    const w = Math.max(1, rect.r - rect.l);
+    const h = Math.max(1, rect.b - rect.t);
+    return Math.min(w * 0.32, Math.min(26, Math.max(12, h * 0.4)));
+  }
+
+  // 平顶的左右端：相对气泡左沿的像素距离 [flatL, flatR]。
+  function driftFlatSpan(rect) {
+    const inset = driftFlatInset(rect);
+    const w = Math.max(1, rect.r - rect.l);
+    return [inset, Math.max(inset + 6, w - inset)];
   }
 
   function binsFor(id) {
@@ -496,6 +528,70 @@
     }
   }
 
+  // 雪从气泡边缘滑下去时掉下来的雪末（会往下坠，跟吹散的那种不一样）
+  function spawnFallOff(x, y, dir, strength) {
+    if (mistParticles.length > 130) return;
+    mistParticles.push({
+      x: x + (Math.random() - 0.5) * 8,
+      y: y + Math.random() * 4,
+      vx: dir * (26 + Math.random() * 44) * (0.6 + strength * 0.6),
+      vy: 22 + Math.random() * 34,
+      gravity: 240,
+      r: 0.7 + Math.random() * 0.95,
+      alpha: 0.34 + Math.random() * 0.26,
+      life: 0.9,
+      decay: 0.05 + Math.random() * 0.028,
+    });
+  }
+
+  // 手机歪了：雪沿着气泡顶边往低的一侧流，流到边上就掉下去。
+  // 歪得少不动（防手抖），歪得越多流得越快。
+  function slideDrifts(dt) {
+    const mag = Math.abs(tilt);
+    if (mag < 0.12) return;
+    const dir = tilt > 0 ? 1 : -1;
+    const strength = (mag - 0.12) / 0.88;      // 0..1
+    for (const rect of bubbleRects) {
+      const bins = snowDrifts.get(rect.i);
+      if (!bins) continue;
+      const len = bins.length;
+      const step = Math.max(1, (rect.r - rect.l) / (len - 1));
+      // 只在平顶上流动；流到平顶的尽头（圆弧开始处）就掉下去，
+      // 不往圆角上流 —— 圆角上的雪画不出来，会白掉。
+      const span = driftFlatSpan(rect);
+      const iMin = Math.max(1, Math.round(span[0] / step));
+      const iMax = Math.min(len - 2, Math.round(span[1] / step));
+      if (iMax - iMin < 3) continue;
+      const pxPerSec = 24 + 92 * strength;     // 轻轻歪约 24px/s，歪狠了约 116px/s
+      const move = Math.min(1, pxPerSec * dt / step);
+      if (move <= 0) continue;
+      let spill = 0;
+      if (dir > 0) {
+        for (let i = iMax - 1; i >= iMin; i--) {
+          const m = bins[i] * move;
+          bins[i] -= m;
+          bins[i + 1] += m;
+        }
+        spill = bins[iMax];
+        bins[iMax] = 0;
+      } else {
+        for (let i = iMin + 1; i <= iMax; i++) {
+          const m = bins[i] * move;
+          bins[i] -= m;
+          bins[i - 1] += m;
+        }
+        spill = bins[iMin];
+        bins[iMin] = 0;
+      }
+      if (spill > 0.35) {
+        const n = Math.min(3, Math.ceil(spill * 0.5));
+        const x = dir > 0 ? rect.l + span[1] - 3 : rect.l + span[0] + 3;
+        const y = rect.t - 1;
+        for (let k = 0; k < n; k++) spawnFallOff(x, y, dir, strength);
+      }
+    }
+  }
+
   // 吹散时飘走的细雪末（不是水汽，雪只会升华成一丁点粉末）
   function spawnBreezeSpeck(x, y, breeze) {
     if (mistParticles.length > 95) return;
@@ -531,7 +627,10 @@
           // 原来撞上第一个就「落地」了，第二个气泡永远等不到雪）。
           // 同一个气泡这一圈只算一次，免得在顶沿那一格反复加雪。
           if (f.hits.has(r.i)) continue;
-          if (x >= r.l + 14 && x <= r.r - 14 && y >= r.t - 2 && y <= r.t + 26) {
+          // 只落在平顶上（圆弧部分不落），也不会落在角上悬空。
+          const span = driftFlatSpan(r);
+          const xd = x - r.l;
+          if (xd >= span[0] && xd <= span[1] && y >= r.t - 2 && y <= r.t + 26) {
             // 每一下堆得比桌面稿多一点：手机上气泡少、雪片也少，
             // 原来那个量要等好几分钟才看得出鼓包。
             // 被上面那块压着的顶沿只堆一小点 —— 那块本来就挡着雪。
@@ -551,7 +650,7 @@
       snowDrifts.forEach(bins => {
         for (let i = 0; i < bins.length; i++) if (bins[i] > maxSnow) maxSnow = bins[i];
       });
-      if ((maxSnow > 13.8 && windTimer > 9) || windTimer > 30) {
+      if (AUTO_BREEZE && ((maxSnow > 13.8 && windTimer > 9) || windTimer > 30)) {
         breezeActive = true;
         breezeProgress = 0.01;
         windTimer = 0;
@@ -574,6 +673,10 @@
     // 3. 画雪堆 + 边吹边化
     driftCtx.clearRect(0, 0, w, h);
     if (!accumulate) return;
+
+    // 手机歪着：雪往低的一侧流（先追一下目标角度，别一跳一跳的）
+    tilt += (tiltTarget - tilt) * Math.min(1, dt * 6);
+    slideDrifts(dt);
     driftCtx.save();
     const k = Math.min(2, dt * 60);
 
@@ -615,14 +718,25 @@
       driftCtx.shadowColor = `rgba(255, 255, 255, ${0.38 * opacity})`;
       driftCtx.shadowBlur = 7;
 
+      // 雪只画在平顶上：两端各收一段（正好收在圆弧开始的地方），
+      // 收边的那十几像素高度顺下去，看起来是雪在圆角边上有个自然的斜坡。
+      const span = driftFlatSpan(rect);
+      const fade = Math.min(12, Math.max(3, (span[1] - span[0]) * 0.16));
+      const edgeFade = (xd) => {
+        const df = Math.min(xd - span[0], span[1] - xd);
+        return df <= 0 ? 0 : Math.min(1, df / fade);
+      };
+
       driftCtx.beginPath();
-      driftCtx.moveTo(rect.l + 10, baseTop);
+      driftCtx.moveTo(rect.l + span[0], baseTop);
       for (let i = 0; i < len; i++) {
-        driftCtx.lineTo(rect.l + i * step, baseTop - bins[i]);
+        const xd = i * step;
+        driftCtx.lineTo(rect.l + xd, baseTop - bins[i] * edgeFade(xd));
       }
       for (let i = len - 1; i >= 0; i--) {
-        const overhang = Math.min(2.8, bins[i] * 0.22);
-        driftCtx.lineTo(rect.l + i * step, baseTop + overhang);
+        const xd = i * step;
+        const overhang = Math.min(2.8, bins[i] * 0.22) * edgeFade(xd);
+        driftCtx.lineTo(rect.l + xd, baseTop + overhang);
       }
       driftCtx.closePath();
       driftCtx.fill();
@@ -635,6 +749,7 @@
       const m = mistParticles[i];
       m.life -= m.decay * k;
       if (m.life <= 0) { mistParticles.splice(i, 1); continue; }
+      m.vy += (m.gravity || 0) * dt;
       m.x += m.vx * dt;
       m.y += m.vy * dt;
       const a = Math.sin(m.life * Math.PI) * m.alpha * opacity;
@@ -648,6 +763,23 @@
       driftCtx.fill();
     }
     driftCtx.restore();
+  }
+
+  // ---------- 气泡位置跟随 ----------
+  // 收到的新位置先存成目标，每帧追一点。
+  // 网页里滑动时是每帧推位置，追得紧、几乎不延迟；App 里推得稀（约 0.35 秒一次），
+  // 就按推的间隔把追赶时间拉长 —— 雪堆看起来仍是连续滑动，不会一格一格弹上去。
+  function smoothBubbleRects(dt) {
+    if (!bubbleRects.length || dt <= 0) return;
+    const interval = Math.max(16, Math.min(rectPushInterval, 420));
+    const tau = Math.min(150, Math.max(8, interval * 0.45)); // 追赶时间（毫秒）
+    const a = 1 - Math.exp(-dt * 1000 / tau);
+    for (const r of bubbleRects) {
+      r.l += (r.tl - r.l) * a;
+      r.t += (r.tt - r.t) * a;
+      r.r += (r.tr - r.r) * a;
+      r.b += (r.tb - r.b) * a;
+    }
   }
 
   // ---------- 绘制 ----------
@@ -691,7 +823,10 @@
   function frame(now) {
     const dt = previous ? Math.min((now - previous) / 1000, 0.05) : 0;
     previous = now;
-    if (!paused && !document.hidden) draw(dt * speed);
+    if (!paused && !document.hidden) {
+      smoothBubbleRects(dt);
+      draw(dt * speed);
+    }
     requestAnimationFrame(frame);
   }
 
@@ -810,6 +945,12 @@
       clearDrifts();
       draw(0);
     },
+    // 倾斜百分比：-100 往左歪，+100 往右歪，0 摆平。
+    // App 没开陀螺仪时不传就行（一直 0 = 关着）。
+    setTilt: function (value) {
+      const v = Number(value);
+      tiltTarget = isFinite(v) ? Math.max(-1, Math.min(1, v / 100)) : 0;
+    },
     // App 推过来的气泡位置：[{i,l,t,r,b}]，单位是 CSS px（=dp）
     setBubbles: function (value) {
       let list = value;
@@ -817,6 +958,14 @@
         try { list = JSON.parse(value); } catch (_) { return; }
       }
       if (!Array.isArray(list)) return;
+
+      const now = (window.performance && performance.now) ? performance.now() : Date.now();
+      // 记一下推送间隔：滑得快时 App 推得勤，网页这边追得紧一点。
+      if (lastSetBubblesAt) {
+        const gap = now - lastSetBubblesAt;
+        if (gap > 4 && gap < 4000) rectPushInterval = rectPushInterval * 0.6 + gap * 0.4;
+      }
+      lastSetBubblesAt = now;
 
       const next = [];
       const seen = new Set();
@@ -828,14 +977,34 @@
         const id = String(r.i == null ? next.length : r.i);
         if (seen.has(id)) continue;
         seen.add(id);
-        next.push({ i: id, l, t, r: rr, b });
+        driftSeenAt.set(id, now);
         binsFor(id);
+
+        let box = bubbleById.get(id);
+        if (!box) {
+          // 第一次见：直接出现在目标位置，不用从屏幕角落飞过来。
+          box = { i: id, l, t, r: rr, b, tl: l, tt: t, tr: rr, tb: b };
+          bubbleById.set(id, box);
+        } else {
+          box.tl = l; box.tt = t; box.tr = rr; box.tb = b;
+        }
+        next.push(box);
       }
-      // 已经滚出屏幕 / 被删掉的那几张，雪堆一起收走
-      for (const id of Array.from(snowDrifts.keys())) {
-        if (!seen.has(id)) snowDrifts.delete(id);
-      }
+
       bubbleRects = next;
+
+      // 气泡暂时滑出屏幕 / 被回收：位置没了，雪堆先留着。
+      // 2.5 秒内滑回来，雪还是原来那堆；确实没了才收走。
+      for (const id of Array.from(bubbleById.keys())) {
+        if (!seen.has(id)) bubbleById.delete(id);
+      }
+      for (const id of Array.from(driftSeenAt.keys())) {
+        if (seen.has(id)) continue;
+        if (now - driftSeenAt.get(id) > 2500) {
+          driftSeenAt.delete(id);
+          snowDrifts.delete(id);
+        }
+      }
     },
   };
 
@@ -847,7 +1016,7 @@
   // op 与 window.weatherFx 的方法名一一对应；就绪时页面回一条 { type:'weather-fx-ready' }。
   const OPS = ['setEffect', 'setCount', 'setSpeed', 'setOpacity', 'setPaused',
                'setFrost', 'setFrostOpacity', 'setSplash', 'setRainScale',
-               'setAccumulate', 'setBubbles'];
+               'setAccumulate', 'setBubbles', 'setTilt'];
   window.addEventListener('message', function (e) {
     const msg = e.data;
     if (!msg || msg.type !== 'weather-fx') return;

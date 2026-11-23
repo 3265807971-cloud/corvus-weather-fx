@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>积雪跟手 · 前后对比</title>
+<style>
+  :root{
+    --bg:#0f151d; --card:#18212c; --line:rgba(255,255,255,.10);
+    --text:#e9eff5; --dim:rgba(233,239,245,.55);
+    --accent:#9fd8ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+    font:14px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  header{padding:22px 20px 10px;max-width:1180px;margin:0 auto}
+  h1{margin:0 0 6px;font-size:19px;font-weight:600;letter-spacing:.02em}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 14px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px}
+  button{appearance:none;border:1px solid rgba(255,255,255,.14);border-radius:999px;
+    background:rgba(255,255,255,.06);color:var(--text);padding:8px 16px;font-size:13px;
+    cursor:pointer;transition:background .15s,border-color .15s}
+  button:hover{background:rgba(255,255,255,.12)}
+  button:disabled{opacity:.4;cursor:default}
+  label.chk{display:inline-flex;align-items:center;gap:6px;color:var(--dim);font-size:13px;
+    cursor:pointer;user-select:none}
+  .hint{color:var(--dim);font-size:12.5px;margin:2px 0 0}
+  main{max-width:1180px;margin:0 auto;padding:16px 20px 60px;
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+  @media (max-width:980px){ main{grid-template-columns:1fr;max-width:460px} }
+  .col{display:flex;flex-direction:column;gap:8px;min-width:0}
+  .col h2{margin:0;font-size:13.5px;font-weight:600}
+  .col p{margin:0;color:var(--dim);font-size:12px;line-height:1.5}
+  .phone{position:relative;width:100%;aspect-ratio:300/620;border-radius:26px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.14);background:#111;box-shadow:0 14px 40px rgba(0,0,0,.4)}
+  .phone iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--dim)}
+  .tag.on{color:#0f151d;background:var(--accent);border-color:var(--accent);
+    font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>积雪跟手 · 前后对比</h1>
+  <p class="sub">三台手机都是同一段假聊天、同一场柔光飘雪。雪先在气泡顶上堆十几秒，然后按「滑一下」看气泡往上滑时，雪堆是跟着走还是留在后面。下面每台的照片都量过：气泡快速滑动时，雪堆最多落后气泡多少。</p>
+  <p class="hint" style="margin:0 0 8px">注意：这里把雪画在气泡前面，看得更清楚；你手机上雪是画在气泡后面的。</p>
+  <div class="bar">
+    <button id="btnFling" disabled>滑一下</button>
+    <button id="btnFling3" disabled>连滑三次</button>
+    <button id="btnReload">重新堆雪</button>
+    <label class="chk"><input type="checkbox" id="auto"> 自动来回滑</label>
+  </div>
+  <p class="hint" id="hint">雪正在堆……大约 12 秒后按钮会亮起来。想自己滑也行，直接在任意一台手机里上下拖。</p>
+</header>
+
+<main>
+  <section class="col">
+    <h2><span class="tag">原来 · v312</span> 每 0.35 秒推一次位置</h2>
+    <p>气泡滑得快时，雪堆先留在原地，等下一次位置到了再「啪」一下跳上去 —— 就是之前说的「弹起来」。实测最多落后约 <b>316 像素</b>。</p>
+    <div class="phone"><iframe src="compare-frame.html?mode=old" title="v312 原来"></iframe></div>
+  </section>
+
+  <section class="col">
+    <h2><span class="tag on">现在 · v313</span> 变化中 0.07 秒推一次</h2>
+    <p>位置推得勤，网页那边再每帧往新位置追一点。不再跳，但滑得快时雪堆还是被拖在后面。实测平均落后约 <b>75 像素</b>（最多 107）。</p>
+    <div class="phone"><iframe src="compare-frame.html?mode=now" title="v313 现在"></iframe></div>
+  </section>
+
+  <section class="col">
+    <h2><span class="tag">试验 · 每帧推</span> 0.016 秒推一次</h2>
+    <p>如果 App 每一帧都推位置，雪堆几乎完全粘在气泡上。实测最多落后 <b>16 像素</b>，差不多就是屏幕刷新一帧的时间。</p>
+    <div class="phone"><iframe src="compare-frame.html?mode=frame" title="每帧推"></iframe></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var frames = Array.prototype.slice.call(document.querySelectorAll('.phone iframe'));
+  var btn1 = document.getElementById('btnFling');
+  var btn3 = document.getElementById('btnFling3');
+  var btnReload = document.getElementById('btnReload');
+  var auto = document.getElementById('auto');
+  var hint = document.getElementById('hint');
+  var autoTimer = null;
+
+  function fling() {
+    frames.forEach(function (f) {
+      try { f.contentWindow.postMessage({ type: 'cmp', op: 'fling' }, '*'); } catch (_) {}
+    });
+  }
+  function enable(on) { btn1.disabled = !on; btn3.disabled = !on; }
+
+  btn1.addEventListener('click', fling);
+  btn3.addEventListener('click', function () {
+    var n = 0;
+    (function next() {
+      if (n++ >= 3) return;
+      fling();
+      setTimeout(next, 900);
+    })();
+  });
+  btnReload.addEventListener('click', function () { location.reload(); });
+  auto.addEventListener('change', function () {
+    if (auto.checked) {
+      autoTimer = setInterval(fling, 2600);
+      if (!btn1.disabled) hint.textContent = '自动来回滑中……想停就把勾去掉。';
+    } else if (autoTimer) {
+      clearInterval(autoTimer); autoTimer = null;
+      hint.textContent = '停下来了。可以自己按「滑一下」，或者直接在某台手机里拖。';
+    }
+  });
+
+  setTimeout(function () {
+    enable(true);
+    hint.textContent = '可以滑了。看三台的雪堆在气泡往上走的时候跟得紧不紧。';
+  }, 12000);
+})();
+</script>
+</body>
+</html>

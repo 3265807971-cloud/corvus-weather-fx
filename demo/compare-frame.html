@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>对比 · 单个手机</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;color:#eef2f6;
+    font:13px/1.55 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:
+      radial-gradient(60% 45% at 20% 15%, rgba(255,206,140,.22), transparent 70%),
+      radial-gradient(50% 40% at 82% 22%, rgba(140,200,255,.22), transparent 70%),
+      linear-gradient(180deg,#1d2734 0%,#33414f 55%,#5a4d42 100%)}
+  #fx{position:fixed;inset:0;width:100%;height:100%;border:0;pointer-events:none;z-index:2}
+  #chat{position:absolute;inset:0;overflow-y:auto;padding:18px 12px 96px;z-index:1;
+    -webkit-overflow-scrolling:touch}
+  .inner{display:flex;flex-direction:column;gap:10px;max-width:560px;margin:0 auto}
+  .row{display:flex}
+  .row.u{justify-content:flex-end}
+  .b{max-width:82%;padding:8px 12px;border-radius:14px;font-size:13px;
+    background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.10);
+    width:fit-content;box-shadow:0 4px 14px rgba(0,0,0,.14)}
+  .row.u .b{background:rgba(159,216,255,.20);border-color:rgba(159,216,255,.30)}
+  #inputWrap{position:fixed;left:0;right:0;bottom:0;z-index:3;padding:8px 10px 10px;
+    display:flex;justify-content:center}
+  #input{width:100%;padding:10px 14px;border-radius:14px;font-size:13px;
+    background:rgba(20,24,30,.66);border:1px solid rgba(255,255,255,.14);
+    color:rgba(255,255,255,.55);backdrop-filter:blur(14px)}
+</style>
+</head>
+<body>
+<iframe id="fx" title="雨雪层"></iframe>
+<div id="chat"><div class="inner" id="list"></div></div>
+<div id="inputWrap"><div id="input">说点什么…</div></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // 三档：old = v312 原来的（0.35 秒推一次、直接跳）
+  //       now = v313 现在装的（变化中 0.07 秒推一次 + 网页平滑追）
+  //       frame = 试验：每一帧都推（16ms）
+  var mode = new URLSearchParams(location.search).get('mode') || 'now';
+
+  var lines = [
+    ['a', '外面好像下雪了。'],
+    ['u', '真的欸，窗户上全是雪。'],
+    ['a', '雪落在玻璃上不化，一层一层往上堆。'],
+    ['u', '你那边的天是什么颜色？'],
+    ['a', '灰里透一点暖，像有人在云后面点了一盏很低的灯。'],
+    ['u', '听起来很适合窝在沙发里，什么都不干。'],
+    ['a', '那就什么都不干吧。雪停之前，我都在。'],
+    ['u', '你说的我都记下来了。'],
+    ['a', '记下来做什么？'],
+    ['u', '以后下雪的时候拿出来看。'],
+    ['a', '那你得记清楚——今天这场雪，比昨天的慢一点。'],
+    ['u', '为什么连这个都在意？'],
+    ['a', '因为雪落下来的速度，决定了我们还能这样聊多久。'],
+    ['u', '……你又在说奇怪的话。'],
+    ['a', '奇怪吗？窗台上的雪已经堆到窗框了。'],
+    ['u', '拍给我看看。'],
+    ['a', '拍不出来。雪在照片里永远是白的，看不出它堆了多厚。'],
+    ['u', '那就多聊一会儿，让它再堆高一点。']
+  ];
+
+  var wrap = document.getElementById('list');
+  lines.forEach(function (pair, i) {
+    var row = document.createElement('div');
+    row.className = 'row ' + (pair[0] === 'u' ? 'u' : 'a');
+    var b = document.createElement('div');
+    b.className = 'b';
+    b.dataset.msg = 'm' + i;
+    b.textContent = pair[1];
+    row.appendChild(b);
+    wrap.appendChild(row);
+  });
+
+  var fxFrame = document.getElementById('fx');
+  // breeze=0：预览时别自动吹散，不然后面雪刚堆起来就被风扫掉了
+  fxFrame.src = (mode === 'old') ? 'fx-v312.html?breeze=0' : '../fx.html?breeze=0';
+
+  var fxReady = false;
+  var q = [];
+  function send(msg) {
+    if (fxReady) { try { fxFrame.contentWindow.postMessage(msg, '*'); } catch (_) {} }
+    else q.push(msg);
+  }
+
+  var lastJson = '';
+  function buildList() {
+    var list = [];
+    document.querySelectorAll('[data-msg]').forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      list.push({ i: el.dataset.msg, l: Math.round(r.left), t: Math.round(r.top),
+                  r: Math.round(r.right), b: Math.round(r.bottom) });
+    });
+    var ir = document.getElementById('input').getBoundingClientRect();
+    list.push({ i: 'input', l: Math.round(ir.left), t: Math.round(ir.top),
+                r: Math.round(ir.right), b: Math.round(ir.bottom) });
+    return list;
+  }
+
+  // 推一次；位置没变就不推（跟 App 的 drain 一样）
+  function push() {
+    var list = buildList();
+    var json = JSON.stringify(list);
+    if (json === lastJson) return false;
+    lastJson = json;
+    send({ type: 'weather-fx', op: 'setBubbles', value: list });
+    return true;
+  }
+
+  if (mode === 'old') {
+    // v312：不管滑没滑，每 0.35 秒最多推一次
+    setInterval(push, 350);
+  } else if (mode === 'frame') {
+    // 试验：每帧看一次，动了就推（约 16ms 一次）
+    var raf = function () { push(); requestAnimationFrame(raf); };
+    requestAnimationFrame(raf);
+  } else {
+    // v313：刚推过就在 0.07 秒后再看，闲着就 0.35 秒
+    var tick = function () {
+      var changed = push();
+      setTimeout(tick, changed ? 70 : 350);
+    };
+    setTimeout(tick, 350);
+  }
+
+  var dir = 1;
+  function fling() {
+    var el = document.getElementById('chat');
+    var max = el.scrollHeight - el.clientHeight;
+    var from = el.scrollTop;
+    var to = dir > 0 ? Math.min(max, from + 560) : Math.max(0, from - 560);
+    dir = -dir;
+    var t0 = performance.now(), dur = 620;
+    function step(t) {
+      var u = Math.min(1, (t - t0) / dur);
+      var e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      el.scrollTop = from + (to - from) * e;
+      if (u < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (d && d.type === 'cmp' && d.op === 'fling') fling();
+  });
+
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'weather-fx-ready') return;
+    fxReady = true;
+    while (q.length) {
+      try { fxFrame.contentWindow.postMessage(q.shift(), '*'); } catch (_) {}
+    }
+    send({ type: 'weather-fx', op: 'setEffect',  value: 'soft-snow' });
+    send({ type: 'weather-fx', op: 'setCount',   value: 90 });
+    send({ type: 'weather-fx', op: 'setSpeed',   value: 1 });
+    send({ type: 'weather-fx', op: 'setOpacity', value: 90 });
+    send({ type: 'weather-fx', op: 'setSplash',  value: false });
+    send({ type: 'weather-fx', op: 'setAccumulate', value: true });
+    push();
+    window.parent.postMessage({ type: 'cmp-ready', mode: mode }, '*');
+  });
+})();
+</script>
+</body>
+</html>
