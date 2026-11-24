@@ -228,7 +228,10 @@
 
   function onOrient(e) {
     if (!sensorOn) return;
-    var g = (typeof e.gamma === 'number') ? e.gamma : 0;  // 竖屏时左右歪
+    // 竖屏时左右歪。安卓上报的 gamma 跟我们约定的方向是反的：
+    // 屏幕右边压下去时 gamma 是负的 —— 直接拿去用，雪会往高的那一侧流
+    // （1124 曼曼在手机上实测：方向反了）。所以取反，右边压低 = 正 = 雪往右滑。
+    var g = (typeof e.gamma === 'number') ? -e.gamma : 0;
     var v = Math.max(-100, Math.min(100, g / 45 * 100));
     slider.value = v;
     val.textContent = Math.round(v);
