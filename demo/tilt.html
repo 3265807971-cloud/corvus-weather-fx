@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="cache-control" content="no-store, max-age=0">
+<meta http-equiv="expires" content="0">
 <title>倾斜滑雪 · 预览</title>
 <style>
   :root{
@@ -81,6 +83,8 @@
         <button id="btSensor">用手机倾斜</button>
       </div>
       <p class="note" id="sensorNote" style="margin-top:10px"></p>
+      <label class="chk"><input type="checkbox" id="flip"> 方向反了？勾上翻过来</label>
+      <p class="note" id="rawNote"></p>
     </div>
 
     <div class="card">
@@ -224,18 +228,50 @@
   /* ---------- 真手机倾斜 ---------- */
   var btSensor = document.getElementById('btSensor');
   var sensorNote = document.getElementById('sensorNote');
+  var rawNote = document.getElementById('rawNote');
+  var flipBox = document.getElementById('flip');
   var sensorOn = false;
 
-  function onOrient(e) {
-    if (!sensorOn) return;
-    // 竖屏时左右歪。安卓上报的 gamma 跟我们约定的方向是反的：
-    // 屏幕右边压下去时 gamma 是负的 —— 直接拿去用，雪会往高的那一侧流
-    // （1124 曼曼在手机上实测：方向反了）。所以取反，右边压低 = 正 = 雪往右滑。
-    var g = (typeof e.gamma === 'number') ? -e.gamma : 0;
-    var v = Math.max(-100, Math.min(100, g / 45 * 100));
+  // 各家浏览器对左右倾斜的符号不统一（安卓跟 iOS 就相反），
+  // 所以不写死：页面上留一个「翻过来」，勾一次记住，下次还是这个方向。
+  var flipped = false;
+  try { flipped = localStorage.getItem('corvusTiltFlip') === '1'; } catch (_) {}
+  flipBox.checked = flipped;
+  flipBox.addEventListener('change', function () {
+    flipped = flipBox.checked;
+    try { localStorage.setItem('corvusTiltFlip', flipped ? '1' : '0'); } catch (_) {}
+  });
+
+  function pushTilt(v, label) {
+    v = Math.max(-100, Math.min(100, v));
     slider.value = v;
     val.textContent = Math.round(v);
+    if (rawNote) {
+      rawNote.textContent = label + ' → 雪往' + (v > 6 ? '右' : v < -6 ? '左' : '不动') + '流';
+    }
     send({ type: 'weather-fx', op: 'setTilt', value: v });
+  }
+
+  // 首选重力加速度：它的正负号是标准定死的（右边压低 = x 为负），
+  // 各家浏览器都一样，跟 App 里读 TYPE_GRAVITY 用的是同一个量。
+  var motionAt = 0;
+  function onMotion(e) {
+    if (!sensorOn) return;
+    var a = e.accelerationIncludingGravity;
+    if (!a || typeof a.x !== 'number') return;
+    motionAt = Date.now();
+    var g = flipped ? a.x : -a.x;   // 取反：右边压低 → 正 → 雪往右滑
+    pushTilt(g / 6.9 * 100, '读数 ' + Math.round(a.x));
+  }
+
+  // 重力读不到时退回用 gamma（竖屏左右歪的角度）。符号各家不统一，
+  // 默认取反（安卓实测），万一还是反的，勾「翻过来」就顺了，不用改代码。
+  function onOrient(e) {
+    if (!sensorOn) return;
+    if (Date.now() - motionAt < 1200) return;   // 有重力读数就听重力的
+    var gamma = (typeof e.gamma === 'number') ? e.gamma : 0;
+    var g = flipped ? gamma : -gamma;
+    pushTilt(g / 45 * 100, '倾角 ' + Math.round(gamma) + '°');
   }
 
   if (typeof DeviceOrientationEvent === 'undefined') {
@@ -250,12 +286,16 @@
     if (sensorOn) {
       sensorOn = false;
       window.removeEventListener('deviceorientation', onOrient);
+      window.removeEventListener('devicemotion', onMotion);
+      if (rawNote) rawNote.textContent = '';
       btSensor.textContent = '用手机倾斜';
       sensorNote.textContent = '停用了。回到用滑杆。';
       return;
     }
     var start = function () {
       sensorOn = true;
+      motionAt = 0;
+      window.addEventListener('devicemotion', onMotion);
       window.addEventListener('deviceorientation', onOrient);
       sensorNote.textContent = '已经接上了。现在把手机往左、往右歪试试；再点一次就停。';
       btSensor.textContent = '停用手机倾斜';
